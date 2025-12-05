@@ -1,0 +1,202 @@
+:root {
+    --primary-color: #3498db;
+    --enemy-color: #e74c3c;
+    --elixir-color: #9b59b6;
+    --bg-grass: #2ecc71;
+    --bridge-color: #95a5a6;
+    --water-color: #34495e;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background: #2c3e50;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    user-select: none;
+}
+
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+canvas {
+    background-color: var(--bg-grass);
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Let clicks pass through to canvas */
+}
+
+/* Enable pointer events for actual UI elements */
+#start-screen, #game-over-screen, #bottom-bar, #top-bar {
+    pointer-events: auto;
+}
+
+#start-screen, #game-over-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+.hidden {
+    display: none !important;
+}
+
+h1 {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 5px;
+    text-shadow: 0 5px 0 #000;
+}
+
+button {
+    padding: 15px 40px;
+    font-size: 1.5rem;
+    background: #f1c40f;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    color: #2c3e50;
+    transition: transform 0.1s;
+}
+
+button:active {
+    transform: scale(0.95);
+}
+
+#top-bar {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px; /* Match canvas width roughly */
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    color: white;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px black;
+}
+
+#bottom-bar {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#elixir-bar-container {
+    width: 100%;
+    height: 30px;
+    background: #333;
+    border-radius: 15px;
+    overflow: hidden;
+    margin-bottom: 10px;
+    position: relative;
+    border: 2px solid #fff;
+}
+
+#elixir-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--elixir-color);
+    transition: width 0.2s linear;
+}
+
+#elixir-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-weight: bold;
+    text-shadow: 1px 1px 1px black;
+}
+
+#card-deck {
+    display: flex;
+    gap: 10px;
+    height: 100px;
+}
+
+.card {
+    width: 70px;
+    height: 90px;
+    background: #ecf0f1;
+    border-radius: 5px;
+    border: 3px solid #7f8c8d;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.1s;
+    background-size: cover;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    border-color: #f1c40f;
+}
+
+.card.selected {
+    border-color: #f1c40f;
+    box-shadow: 0 0 15px #f1c40f;
+    transform: translateY(-10px);
+}
+
+.card .cost {
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    background: var(--elixir-color);
+    color: white;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    border: 2px solid white;
+}
+
+.card .name {
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: #333;
+    margin-top: 40px;
+}
+
+/* Placeholder card visuals */
+.card[data-type="knight"] { background-image: linear-gradient(to bottom right, #fff, #bdc3c7); }
+.card[data-type="archer"] { background-image: linear-gradient(to bottom right, #fff, #2ecc71); }
+.card[data-type="giant"] { background-image: linear-gradient(to bottom right, #fff, #e67e22); }
