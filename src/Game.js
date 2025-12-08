@@ -20,6 +20,10 @@ export class Game {
         this.role = 'attacker'; // 'attacker' or 'defender'
         this.selectedCard = null; // 'unit_basic', 'tower_cannon', etc.
 
+        // Resources
+        this.defenderLives = 20;
+        this.attackerGold = 100;
+
         this.resize();
         window.addEventListener('resize', () => this.resize());
 
@@ -28,8 +32,12 @@ export class Game {
     }
 
     setupUI() {
-        this.uiRoleText = document.getElementById('role-indicator');
+        this.uiLives = document.getElementById('defender-lives');
+        this.uiGold = document.getElementById('attacker-gold');
         this.uiDock = document.getElementById('card-dock');
+
+        // Initial Draw
+        this.updateUI();
 
         document.getElementById('role-switch-btn').addEventListener('click', () => {
             this.toggleRole();
@@ -38,10 +46,15 @@ export class Game {
         this.renderCards();
     }
 
+    updateUI() {
+        if (this.uiLives) this.uiLives.innerText = Math.floor(this.defenderLives);
+        if (this.uiGold) this.uiGold.innerText = Math.floor(this.attackerGold);
+    }
+
     toggleRole() {
         this.role = (this.role === 'attacker') ? 'defender' : 'attacker';
         this.selectedCard = null;
-        this.uiRoleText.innerText = this.role.toUpperCase();
+        // this.uiRoleText.innerText = this.role.toUpperCase(); // Old indicator removed
         this.renderCards();
     }
 
@@ -50,8 +63,8 @@ export class Game {
         this.uiDock.className = `${this.role}-theme`;
 
         const items = (this.role === 'attacker')
-            ? [{ id: 'unit_basic', label: 'Grunt' }, { id: 'unit_tank', label: 'Tank' }]
-            : [{ id: 'tower_cannon', label: 'Cannon' }, { id: 'tower_mage', label: 'Mage' }];
+            ? [{ id: 'unit_basic', label: 'Grunt' }, { id: 'unit_tank', label: 'Tank' }, { id: 'unit_golem', label: 'Golem' }]
+            : [{ id: 'tower_cannon', label: 'Cannon' }, { id: 'tower_mage', label: 'Mage' }, { id: 'tower_tesla', label: 'Tesla' }];
 
         items.forEach(item => {
             const card = document.createElement('div');
@@ -154,6 +167,8 @@ export class Game {
             this.shake -= deltaTime * 0.05; // Decay speed
             if (this.shake < 0) this.shake = 0;
         }
+
+        this.updateUI();
     }
 
     render() {
@@ -186,8 +201,12 @@ export class Game {
             });
         }
 
-        this.towers.forEach(tower => tower.render(this.ctx, this.map));
-        this.units.forEach(unit => unit.render(this.ctx, this.map));
+        // Y-Sort Render
+        const entities = [...this.towers, ...this.units];
+        entities.sort((a, b) => a.y - b.y);
+
+        entities.forEach(entity => entity.render(this.ctx, this.map));
+
         this.projectiles.forEach(p => p.render(this.ctx, this.map));
         this.effects.render(this.ctx, this.map);
 

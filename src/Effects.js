@@ -12,6 +12,10 @@ export class EffectManager {
         }
     }
 
+    spawnLightning(x1, y1, x2, y2) {
+        this.effects.push(new Lightning(this.game, x1, y1, x2, y2));
+    }
+
     update(deltaTime) {
         this.effects.forEach(effect => effect.update(deltaTime));
         this.effects = this.effects.filter(effect => effect.active);
@@ -122,5 +126,68 @@ class Particle {
         ctx.beginPath();
         ctx.arc(screenX, screenY, s, 0, Math.PI * 2);
         ctx.fill();
+    }
+}
+
+class Lightning {
+    constructor(game, x1, y1, x2, y2) {
+        this.game = game;
+        this.x1 = x1;
+        this.y1 = y1;
+        this.x2 = x2;
+        this.y2 = y2;
+        this.active = true;
+        this.life = 0.2; // 200ms duration
+
+        // Generate jagged points
+        this.points = [];
+        this.points.push({ x: x1, y: y1 });
+
+        const segments = 5;
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+
+        // Calc normalized perpendicular for offset
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const px = -dy / length;
+        const py = dx / length;
+
+        for (let i = 1; i < segments; i++) {
+            const t = i / segments;
+            // Random offset
+            const offset = (Math.random() - 0.5) * 60;
+
+            this.points.push({
+                x: x1 + dx * t + (px * offset),
+                y: y1 + dy * t + (py * offset)
+            });
+        }
+
+        this.points.push({ x: x2, y: y2 });
+    }
+
+    update(deltaTime) {
+        this.life -= deltaTime / 1000;
+        if (this.life <= 0) this.active = false;
+    }
+
+    render(ctx, map) {
+        ctx.save();
+        ctx.strokeStyle = `rgba(100, 200, 255, ${this.life * 5})`;
+        ctx.lineWidth = 3 * map.scale;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00ffff';
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        ctx.beginPath();
+        this.points.forEach((p, index) => {
+            const sx = map.offsetX + p.x * map.scale;
+            const sy = map.offsetY + p.y * map.scale;
+            if (index === 0) ctx.moveTo(sx, sy);
+            else ctx.lineTo(sx, sy);
+        });
+        ctx.stroke();
+        ctx.restore();
     }
 }

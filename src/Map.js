@@ -12,6 +12,8 @@ export class Map {
         this.loadImage('unit_tank', 'assets/units/unit_tank.png');
         this.loadImage('Main_tower', 'assets/towers/Main_tower.png');
         this.loadImage('tower_mage', 'assets/towers/tower_mage.png');
+        this.loadImage('tower_tesla', 'tower_tesla.png');
+        this.loadImage('unit_golem', 'unit_golem.png');
         this.loadImage('explosion', 'explosion.png'); // Kept in root
 
         // Load Animations

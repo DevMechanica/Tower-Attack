@@ -61,6 +61,26 @@ export class Tower {
     }
 
     shoot(target) {
+        if (this.type === 'tower_tesla') {
+            // Instant Hit + Chain Lightning
+            this.game.effects.spawnLightning(this.x, this.y - 40, target.x, target.y);
+            target.takeDamage(20); // Higher instant damage
+
+            // Simple Chain (find 1 neighbor)
+            const range = 200;
+            const neighbor = this.game.units.find(u =>
+                u !== target && u.active &&
+                Math.hypot(u.x - target.x, u.y - target.y) < range
+            );
+            if (neighbor) {
+                this.game.effects.spawnLightning(target.x, target.y, neighbor.x, neighbor.y);
+                neighbor.takeDamage(10);
+            }
+
+            this.recoil = 0.2;
+            return;
+        }
+
         // Create projectile
         const projType = (this.type === 'tower_cannon') ? 'bullet' : 'magic';
         this.game.projectiles.push(new Projectile(this.game, this.x, this.y, target, projType));
@@ -79,7 +99,9 @@ export class Tower {
         }
 
         // Map internal types to asset names
-        let assetName = (this.type === 'tower_mage') ? 'tower_mage' : 'Main_tower';
+        let assetName = 'Main_tower';
+        if (this.type === 'tower_mage') assetName = 'tower_mage';
+        if (this.type === 'tower_tesla') assetName = 'tower_tesla';
 
         // if (this.recoil > 0 && this.type === 'tower_cannon') {
         //    assetName = 'Main_tower_attack';

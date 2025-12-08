@@ -13,13 +13,34 @@
         <canvas id="game-canvas"></canvas>
         <div id="ui-layer">
 
-            <div id="top-bar">
-                <div id="resources">Gold: <span id="gold-count">0</span></div>
-                <button id="role-switch-btn">Dev: Switch Role</button>
+            <!-- New HUD -->
+            <div id="hud-top">
+                <div class="player-panel defender">
+                    <div class="panel-icon">🛡️</div>
+                    <div class="bar-container">
+                        <div class="bar-label">P1 DEFENDER (RED)</div>
+                        <div class="health-bar">
+                            <div class="fill" style="width: 100%;"></div>
+                            <span class="value" id="defender-lives">20</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vs-badge">VS</div>
+
+                <div class="player-panel attacker">
+                    <div class="bar-container">
+                        <div class="bar-label">P2 ATTACKER (BLUE)</div>
+                        <div class="resource-bar">
+                            <div class="fill" style="width: 50%;"></div>
+                            <span class="value" id="attacker-gold">100</span>
+                        </div>
+                    </div>
+                    <div class="panel-icon">💎</div>
+                </div>
             </div>
 
-            <!-- Role Indicator -->
-            <div id="role-indicator">ATTACKER</div>
+            <button id="role-switch-btn" class="debug-btn">SWITCH ROLE</button>
 
             <!-- Card Dock -->
             <div id="card-dock">
