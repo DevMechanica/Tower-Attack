@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tower Attack</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="ui-layer">
+
+            <div id="top-bar">
+                <div id="resources">Gold: <span id="gold-count">0</span></div>
+                <button id="role-switch-btn">Dev: Switch Role</button>
+            </div>
+
+            <!-- Role Indicator -->
+            <div id="role-indicator">ATTACKER</div>
+
+            <!-- Card Dock -->
+            <div id="card-dock">
+                <!-- Cards injected by JS -->
+            </div>
+
+        </div>
+    </div>
+    <script type="module" src="src/main.js"></script>
+</body>
+
+</html>

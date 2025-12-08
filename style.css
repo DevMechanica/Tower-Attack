@@ -1,0 +1,158 @@
+body,
+html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #333;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    user-select: none;
+}
+
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #000;
+}
+
+canvas {
+    display: block;
+}
+
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+#top-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    box-sizing: border-box;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 100%);
+    z-index: 10;
+}
+
+#resources {
+    color: #ffd700;
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 2px 2px 0 #000;
+}
+
+#role-switch-btn {
+    pointer-events: auto;
+    background: #444;
+    color: #fff;
+    border: 1px solid #777;
+    padding: 8px 16px;
+    font-size: 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+#role-switch-btn:active {
+    background: #666;
+}
+
+#role-indicator {
+    position: absolute;
+    top: 70px;
+    left: 20px;
+    color: white;
+    font-weight: bold;
+    font-size: 18px;
+    text-shadow: 1px 1px 2px black;
+    opacity: 0.8;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+#card-dock {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 15px;
+    pointer-events: auto;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 10px;
+    border-radius: 12px;
+}
+
+.card {
+    width: 70px;
+    height: 90px;
+    background: rgba(30, 30, 30, 0.9);
+    border: 2px solid #555;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: white;
+    font-size: 11px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+}
+
+.card:active {
+    transform: scale(0.95);
+}
+
+.card.selected {
+    border-color: #ffd700;
+    background: rgba(60, 60, 10, 0.9);
+    transform: translateY(-10px);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+.card-icon {
+    width: 40px;
+    height: 40px;
+    background: #777;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    background-size: cover;
+    background-position: center;
+}
+
+/* Theme Colors */
+#card-dock.attacker-theme .card {
+    border-color: #4da6ff;
+}
+
+#card-dock.attacker-theme .card.selected {
+    border-color: #fff;
+    background: #004488;
+}
+
+#card-dock.defender-theme .card {
+    border-color: #ff4d4d;
+}
+
+#card-dock.defender-theme .card.selected {
+    border-color: #fff;
+    background: #880000;
+}
