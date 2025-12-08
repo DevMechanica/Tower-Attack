@@ -18,6 +18,7 @@ export class Tower {
         this.active = true;
         this.health = 200; // Towers can be destroyed too!
         this.maxHealth = 200;
+        this.recoil = 0;
     }
 
     takeDamage(amount) {
