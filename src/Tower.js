@@ -89,7 +89,7 @@ export class Tower {
         // Sprite Drawing
         if (sprite && sprite.complete) {
             // Apply recoil to size
-            const baseSize = 80 * scale;
+            const baseSize = 200 * scale;
             const drawSize = baseSize * (1 + this.recoil);
 
             ctx.drawImage(
