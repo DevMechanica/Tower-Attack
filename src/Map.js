@@ -6,7 +6,7 @@ export class Map {
 
         // Asset Loading
         this.assets = {};
-        this.loadAssets(['Main_unit', 'unit_tank', 'Main_tower', 'tower_mage']);
+        this.loadAssets(['Main_unit', 'unit_tank', 'Main_tower', 'tower_mage', 'explosion']);
 
         // Load Animations
         this.loadAnimation('soldier_walk', 7, 'jpg');

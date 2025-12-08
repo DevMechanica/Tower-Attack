@@ -1,6 +1,7 @@
 import { Map } from './Map.js';
 import { Unit } from './Unit.js';
 import { Tower } from './Tower.js';
+import { EffectManager } from './Effects.js';
 
 export class Game {
     constructor(canvas) {
@@ -12,10 +13,8 @@ export class Game {
         this.units = [];
         this.towers = [];
         this.projectiles = []; // New array for bullets
-
-        // Constants for Sprite Atlas (Percentages 0-1 for flexibility)
-        this.towers = [];
-        this.projectiles = []; // New array for bullets
+        this.effects = new EffectManager(this);
+        this.shake = 0;
 
         // Game State
         this.role = 'attacker'; // 'attacker' or 'defender'
@@ -147,10 +146,26 @@ export class Game {
 
         this.projectiles.forEach(p => p.update(deltaTime));
         this.projectiles = this.projectiles.filter(p => p.active);
+
+        this.effects.update(deltaTime);
+
+        // Shake Decay
+        if (this.shake > 0) {
+            this.shake -= deltaTime * 0.05; // Decay speed
+            if (this.shake < 0) this.shake = 0;
+        }
     }
 
     render() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.ctx.save();
+        if (this.shake > 0) {
+            const dx = (Math.random() - 0.5) * this.shake * 2;
+            const dy = (Math.random() - 0.5) * this.shake * 2;
+            this.ctx.translate(dx, dy);
+        }
+
         this.map.render(this.ctx);
 
         // Draw Slots if Defender
@@ -174,5 +189,8 @@ export class Game {
         this.towers.forEach(tower => tower.render(this.ctx, this.map));
         this.units.forEach(unit => unit.render(this.ctx, this.map));
         this.projectiles.forEach(p => p.render(this.ctx, this.map));
+        this.effects.render(this.ctx, this.map);
+
+        this.ctx.restore(); // Restore from shake
     }
 }
