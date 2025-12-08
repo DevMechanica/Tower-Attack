@@ -1,9 +1,10 @@
 import { Projectile } from './Projectile.js';
 
 export class Unit {
-    constructor(game, path) {
+    constructor(game, path, type) {
         this.game = game;
         this.path = path;
+        this.type = type || 'unit_basic';
         this.currentPointIndex = 0;
 
         // Start at the first point
@@ -15,15 +16,19 @@ export class Unit {
             this.y = 0;
         }
 
-        this.speed = 100; // Pixels per second (game coordinates)
-        this.radius = 15;
+        this.speed = (this.type === 'unit_tank') ? 60 : 100;
+        this.radius = (this.type === 'unit_tank') ? 20 : 15;
         this.active = true;
-        this.health = 100;
-        this.maxHealth = 100;
+        this.health = (this.type === 'unit_tank') ? 300 : 100;
+        this.maxHealth = this.health;
 
-        // Visuals (Placeholder for sprite mapping)
-        // We will just draw a circle or a simple sprite crop for now
-        this.color = '#4da6ff'; // Blue attacker
+        // Combat
+        this.range = 150;
+        this.cooldown = 0;
+        this.maxCooldown = 1200;
+
+        // Visuals
+        this.color = '#4da6ff';
     }
 
     takeDamage(amount) {
@@ -94,26 +99,44 @@ export class Unit {
     render(ctx, map) {
         if (!this.active) return;
 
-        // Convert game coordinates to screen coordinates
         const screenX = map.offsetX + this.x * map.scale;
         const screenY = map.offsetY + this.y * map.scale;
-        const size = this.radius * map.scale;
+        const scale = map.scale;
 
-        // Draw Unit (Placeholder Circle)
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        // Map internal types to asset names
+        const assetName = (this.type === 'unit_basic') ? 'unit_grunt' :
+            (this.type === 'unit_tank') ? 'unit_tank' : 'unit_grunt';
+
+        const sprite = map.assets[assetName];
+
+        // Sprite Drawing
+        if (sprite && sprite.complete) {
+            const drawSize = (this.type === 'unit_tank' ? 80 : 60) * scale;
+
+            // Draw full image
+            ctx.drawImage(
+                sprite,
+                0, 0, sprite.width, sprite.height,
+                screenX - drawSize / 2, screenY - drawSize / 2, drawSize, drawSize
+            );
+
+        } else {
+            // Fallback Circle
+            const size = this.radius * map.scale;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         // Draw Health Bar
         const barWidth = 30 * map.scale;
         const barHeight = 4 * map.scale;
+        const barY = screenY - (this.radius * map.scale) - 15 * map.scale;
+
         ctx.fillStyle = 'red';
-        ctx.fillRect(screenX - barWidth / 2, screenY - size - 10 * map.scale, barWidth, barHeight);
+        ctx.fillRect(screenX - barWidth / 2, barY, barWidth, barHeight);
         ctx.fillStyle = '#0f0';
-        ctx.fillRect(screenX - barWidth / 2, screenY - size - 10 * map.scale, barWidth * (this.health / this.maxHealth), barHeight);
+        ctx.fillRect(screenX - barWidth / 2, barY, barWidth * (this.health / this.maxHealth), barHeight);
     }
 }

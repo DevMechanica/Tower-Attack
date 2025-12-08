@@ -4,20 +4,26 @@ export class Map {
         this.background = new Image();
         this.background.src = 'background.jpg'; // Relative to index.html (in root)
 
-        this.sprites = new Image();
-        this.sprites.src = 'sprites.png';
+        // Asset Loading
+        this.assets = {};
+        this.loadAssets(['unit_grunt', 'unit_tank', 'tower_cannon', 'tower_mage']);
 
         this.loaded = false;
 
         const checkLoad = () => {
-            if (this.background.complete && this.sprites.complete) {
+            // Check if background + all 4 assets are loaded
+            if (this.background.complete &&
+                this.assets['unit_grunt'].complete &&
+                this.assets['unit_tank'].complete &&
+                this.assets['tower_cannon'].complete &&
+                this.assets['tower_mage'].complete) {
                 this.loaded = true;
                 this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
             }
         };
 
         this.background.onload = checkLoad;
-        this.sprites.onload = checkLoad;
+        Object.values(this.assets).forEach(img => img.onload = checkLoad);
 
         // Logic coordinates (we'll assume a standard base resolution, e.g., 1920x1080)
         this.baseWidth = 1920;
@@ -66,6 +72,14 @@ export class Map {
         ];
     }
 
+    loadAssets(names) {
+        names.forEach(name => {
+            const img = new Image();
+            img.src = `${name}.png`;
+            this.assets[name] = img;
+        });
+    }
+
     updateDimensions(width, height) {
         if (!this.loaded) return;
 
@@ -109,10 +123,5 @@ export class Map {
             0, 0, this.background.width, this.background.height,
             this.offsetX, this.offsetY, this.drawWidth, this.drawHeight
         );
-
-        // Debug: Draw a test sprite from the sprite sheet just to prove it's loaded
-        // Assuming the sprite sheet is just thrown in, we'll draw the whole thing small in the corner to inspect
-        // (DEBUG ONLY - remove later)
-        // ctx.drawImage(this.sprites, 0, 0, 200, 200, this.offsetX + 10, this.offsetY + 10, 100, 100);
     }
 }
