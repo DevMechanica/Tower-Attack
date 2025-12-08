@@ -63,6 +63,7 @@ export class Tower {
         // Create projectile
         const projType = (this.type === 'tower_cannon') ? 'bullet' : 'magic';
         this.game.projectiles.push(new Projectile(this.game, this.x, this.y, target, projType));
+        this.recoil = 0.2; // 20% scale bump
     }
 
     render(ctx, map) {
@@ -70,13 +71,26 @@ export class Tower {
         const screenY = map.offsetY + this.y * map.scale;
         const scale = map.scale;
 
+        // Recoil decay
+        if (this.recoil > 0) {
+            this.recoil -= 0.05;
+            if (this.recoil < 0) this.recoil = 0;
+        }
+
         // Map internal types to asset names
-        const assetName = (this.type === 'tower_mage') ? 'tower_mage' : 'tower_cannon';
+        let assetName = (this.type === 'tower_mage') ? 'tower_mage' : 'Main_tower';
+
+        // if (this.recoil > 0 && this.type === 'tower_cannon') {
+        //    assetName = 'Main_tower_attack';
+        // }
+
         const sprite = map.assets[assetName];
 
         // Sprite Drawing
         if (sprite && sprite.complete) {
-            const drawSize = 80 * scale;
+            // Apply recoil to size
+            const baseSize = 80 * scale;
+            const drawSize = baseSize * (1 + this.recoil);
 
             ctx.drawImage(
                 sprite,

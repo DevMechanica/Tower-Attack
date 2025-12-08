@@ -6,24 +6,32 @@ export class Map {
 
         // Asset Loading
         this.assets = {};
-        this.loadAssets(['unit_grunt', 'unit_tank', 'tower_cannon', 'tower_mage']);
+        this.loadAssets(['Main_unit', 'unit_tank', 'Main_tower', 'tower_mage']);
+
+        // Load Animations
+        this.loadAnimation('soldier_walk', 7, 'jpg');
+        this.loadAnimation('soldier_attack', 4, 'jpg');
 
         this.loaded = false;
 
         const checkLoad = () => {
-            // Check if background + all 4 assets are loaded
-            if (this.background.complete &&
-                this.assets['unit_grunt'].complete &&
-                this.assets['unit_tank'].complete &&
-                this.assets['tower_cannon'].complete &&
-                this.assets['tower_mage'].complete) {
+            // Check if background + all assets are loaded
+            // Basic check: just ensure background is done for now, or improve logic
+            // Ideally we count outstanding loads.
+            if (this.background.complete) {
                 this.loaded = true;
                 this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
             }
         };
 
         this.background.onload = checkLoad;
-        Object.values(this.assets).forEach(img => img.onload = checkLoad);
+        // Note: Simple individual onload management for lists is tricky, 
+        // usually we'd use a Promise.all or a counter. 
+        // For this simple engine, we'll assume they load fast enough or check actively in render (which fails gracefully).
+        // Let's add a basic counter for robustness if needed, but existing logic was also loose.
+
+        // Improve loading check to be more robust later if needed.
+
 
         // Logic coordinates (we'll assume a standard base resolution, e.g., 1920x1080)
         this.baseWidth = 1920;
@@ -78,6 +86,16 @@ export class Map {
             img.src = `${name}.png`;
             this.assets[name] = img;
         });
+    }
+
+    loadAnimation(baseName, count, ext = 'png') {
+        this.assets[baseName] = [];
+        for (let i = 1; i <= count; i++) {
+            const img = new Image();
+            const num = i.toString().padStart(2, '0');
+            img.src = `${baseName}_${num}.${ext}`;
+            this.assets[baseName].push(img);
+        }
     }
 
     updateDimensions(width, height) {

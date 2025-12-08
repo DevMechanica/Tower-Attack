@@ -141,7 +141,7 @@ canvas {
 
 /* Individual Images */
 .card[data-id="unit_basic"] .card-icon {
-    background-image: url('unit_grunt.png');
+    background-image: url('Main_unit.png');
 }
 
 .card[data-id="unit_tank"] .card-icon {
@@ -149,7 +149,7 @@ canvas {
 }
 
 .card[data-id="tower_cannon"] .card-icon {
-    background-image: url('tower_cannon.png');
+    background-image: url('Main_tower.png');
 }
 
 .card[data-id="tower_mage"] .card-icon {
