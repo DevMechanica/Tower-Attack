@@ -129,13 +129,31 @@ canvas {
 }
 
 .card-icon {
-    width: 40px;
-    height: 40px;
-    background: #777;
+    width: 60px;
+    height: 60px;
+    background-color: #333;
     margin-bottom: 5px;
     border-radius: 4px;
     background-size: cover;
+    background-repeat: no-repeat;
     background-position: center;
+}
+
+/* Individual Images */
+.card[data-id="unit_basic"] .card-icon {
+    background-image: url('unit_grunt.png');
+}
+
+.card[data-id="unit_tank"] .card-icon {
+    background-image: url('unit_tank.png');
+}
+
+.card[data-id="tower_cannon"] .card-icon {
+    background-image: url('tower_cannon.png');
+}
+
+.card[data-id="tower_mage"] .card-icon {
+    background-image: url('tower_mage.png');
 }
 
 /* Theme Colors */

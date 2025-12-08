@@ -5,7 +5,7 @@ export class Tower {
         this.game = game;
         this.x = x;
         this.y = y;
-        this.type = type; // 'cannon', 'mage'
+        this.type = type; // 'tower_cannon', 'tower_mage'
 
         this.range = 150;
         this.cooldown = 0;
@@ -13,7 +13,7 @@ export class Tower {
 
         // Visuals
         this.radius = 20;
-        this.color = (type === 'cannon') ? 'red' : 'purple';
+        this.color = (type === 'tower_cannon') ? 'red' : 'purple';
 
         this.active = true;
         this.health = 200; // Towers can be destroyed too!
@@ -61,38 +61,52 @@ export class Tower {
 
     shoot(target) {
         // Create projectile
-        const projType = (this.type === 'cannon') ? 'bullet' : 'magic';
+        const projType = (this.type === 'tower_cannon') ? 'bullet' : 'magic';
         this.game.projectiles.push(new Projectile(this.game, this.x, this.y, target, projType));
     }
 
     render(ctx, map) {
         const screenX = map.offsetX + this.x * map.scale;
         const screenY = map.offsetY + this.y * map.scale;
-        const size = this.radius * map.scale;
+        const scale = map.scale;
 
-        // Draw Tower Base
-        ctx.fillStyle = '#555';
-        ctx.beginPath();
-        ctx.arc(screenX, screenY + 5 * map.scale, size, 0, Math.PI * 2);
-        ctx.fill();
+        // Map internal types to asset names
+        const assetName = (this.type === 'tower_mage') ? 'tower_mage' : 'tower_cannon';
+        const sprite = map.assets[assetName];
 
-        // Draw Tower Top
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(screenX, screenY - 5 * map.scale, size * 0.8, 0, Math.PI * 2);
-        ctx.fill();
+        // Sprite Drawing
+        if (sprite && sprite.complete) {
+            const drawSize = 80 * scale;
 
-        ctx.lineWidth = 2;
-        ctx.stroke();
+            ctx.drawImage(
+                sprite,
+                0, 0, sprite.width, sprite.height,
+                screenX - drawSize / 2, screenY - drawSize / 2 - (10 * scale), drawSize, drawSize
+            );
+        } else {
+            // Fallback Circle
+            const size = this.radius * scale;
+            ctx.fillStyle = '#555';
+            ctx.beginPath();
+            ctx.arc(screenX, screenY + 5 * map.scale, size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(screenX, screenY - 5 * map.scale, size * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
 
         // Health Bar
         if (this.health < this.maxHealth) {
-            const barWidth = 40 * map.scale;
-            const barHeight = 4 * map.scale;
+            const barWidth = 40 * scale;
+            const barHeight = 4 * scale;
+            const barY = screenY - (40 * scale); // Above tower
+
             ctx.fillStyle = 'red';
-            ctx.fillRect(screenX - barWidth / 2, screenY - size - 10 * map.scale, barWidth, barHeight);
+            ctx.fillRect(screenX - barWidth / 2, barY, barWidth, barHeight);
             ctx.fillStyle = '#0f0';
-            ctx.fillRect(screenX - barWidth / 2, screenY - size - 10 * map.scale, barWidth * (this.health / this.maxHealth), barHeight);
+            ctx.fillRect(screenX - barWidth / 2, barY, barWidth * (this.health / this.maxHealth), barHeight);
         }
     }
 }

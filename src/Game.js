@@ -13,6 +13,10 @@ export class Game {
         this.towers = [];
         this.projectiles = []; // New array for bullets
 
+        // Constants for Sprite Atlas (Percentages 0-1 for flexibility)
+        this.towers = [];
+        this.projectiles = []; // New array for bullets
+
         // Game State
         this.role = 'attacker'; // 'attacker' or 'defender'
         this.selectedCard = null; // 'unit_basic', 'tower_cannon', etc.
@@ -53,6 +57,7 @@ export class Game {
         items.forEach(item => {
             const card = document.createElement('div');
             card.className = 'card';
+            card.dataset.id = item.id; // For CSS matching
             card.innerHTML = `<div class="card-icon"></div><span>${item.label}</span>`;
             card.onclick = () => this.selectCard(item.id, card);
             this.uiDock.appendChild(card);
