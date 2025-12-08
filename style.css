@@ -141,19 +141,19 @@ canvas {
 
 /* Individual Images */
 .card[data-id="unit_basic"] .card-icon {
-    background-image: url('Main_unit.png');
+    background-image: url('assets/units/soldier/Main_soldier.png');
 }
 
 .card[data-id="unit_tank"] .card-icon {
-    background-image: url('unit_tank.png');
+    background-image: url('assets/units/unit_tank.png');
 }
 
 .card[data-id="tower_cannon"] .card-icon {
-    background-image: url('Main_tower.png');
+    background-image: url('assets/towers/Main_tower.png');
 }
 
 .card[data-id="tower_mage"] .card-icon {
-    background-image: url('tower_mage.png');
+    background-image: url('assets/towers/tower_mage.png');
 }
 
 /* Theme Colors */

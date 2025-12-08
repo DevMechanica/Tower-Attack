@@ -2,15 +2,21 @@ export class Map {
     constructor(game) {
         this.game = game;
         this.background = new Image();
-        this.background.src = 'background.jpg'; // Relative to index.html (in root)
+        this.background.src = 'assets/background.jpg'; // Relative to index.html (in root)
 
         // Asset Loading
         this.assets = {};
-        this.loadAssets(['Main_unit', 'unit_tank', 'Main_tower', 'tower_mage', 'explosion']);
+
+        // Load individual assets with explicit paths
+        this.loadImage('Main_unit', 'assets/units/soldier/Main_soldier.png');
+        this.loadImage('unit_tank', 'assets/units/unit_tank.png');
+        this.loadImage('Main_tower', 'assets/towers/Main_tower.png');
+        this.loadImage('tower_mage', 'assets/towers/tower_mage.png');
+        this.loadImage('explosion', 'explosion.png'); // Kept in root
 
         // Load Animations
-        this.loadAnimation('soldier_walk', 7, 'jpg');
-        this.loadAnimation('soldier_attack', 4, 'jpg');
+        this.loadAnimation('soldier_walk', 'assets/units/soldier/soldier_walk', 7, 'jpg');
+        this.loadAnimation('soldier_attack', 'assets/units/soldier/soldier_attack', 4, 'jpg');
 
         this.loaded = false;
 
@@ -80,7 +86,15 @@ export class Map {
         ];
     }
 
+    loadImage(key, src) {
+        const img = new Image();
+        img.src = src;
+        this.assets[key] = img;
+    }
+
     loadAssets(names) {
+        // Deprecated or can be removed if not used anymore
+        // keeping implementation just in case but we use loadImage now
         names.forEach(name => {
             const img = new Image();
             img.src = `${name}.png`;
@@ -88,13 +102,13 @@ export class Map {
         });
     }
 
-    loadAnimation(baseName, count, ext = 'png') {
-        this.assets[baseName] = [];
+    loadAnimation(key, pathPrefix, count, ext = 'png') {
+        this.assets[key] = [];
         for (let i = 1; i <= count; i++) {
             const img = new Image();
             const num = i.toString().padStart(2, '0');
-            img.src = `${baseName}_${num}.${ext}`;
-            this.assets[baseName].push(img);
+            img.src = `${pathPrefix}_${num}.${ext}`;
+            this.assets[key].push(img);
         }
     }
 
