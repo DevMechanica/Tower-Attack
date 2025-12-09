@@ -15,6 +15,11 @@ export class Map {
         this.loadImage('tower_tesla', 'tower_tesla.png');
         this.loadImage('unit_golem', 'unit_golem.png');
         this.loadImage('explosion', 'explosion.png'); // Kept in root
+        this.loadImage('purple_explosion', 'assets/effects/purple_explosion.png');
+        this.loadImage('explosion_1', 'assets/effects/explosion_1.png');
+        this.loadImage('explosion_2', 'assets/effects/explosion_2.png');
+        this.loadImage('blue_lightning', 'assets/effects/blue_lightning.png');
+        this.loadImage('colorful_explosion', 'assets/effects/colorful_explosion.png');
 
         // Load Animations
         this.loadAnimation('soldier_walk', 'assets/units/soldier/soldier_walk', 7, 'jpg');

@@ -4,11 +4,13 @@ export class EffectManager {
         this.effects = [];
     }
 
-    spawnExplosion(x, y) {
-        this.effects.push(new Explosion(this.game, x, y));
-        // Spawn some smoke particles too
-        for (let i = 0; i < 5; i++) {
-            this.effects.push(new Particle(this.game, x, y, 'smoke'));
+    spawnExplosion(x, y, type = 'explosion') {
+        this.effects.push(new Explosion(this.game, x, y, type));
+        // Spawn some smoke particles too (less for smaller custom ones maybe?)
+        if (type === 'explosion') {
+            for (let i = 0; i < 5; i++) {
+                this.effects.push(new Particle(this.game, x, y, 'smoke'));
+            }
         }
     }
 
@@ -27,10 +29,11 @@ export class EffectManager {
 }
 
 class Explosion {
-    constructor(game, x, y) {
+    constructor(game, x, y, type = 'explosion') {
         this.game = game;
         this.x = x;
         this.y = y;
+        this.type = type;
         this.active = true;
 
         this.frame = 0;
@@ -54,7 +57,7 @@ class Explosion {
     }
 
     render(ctx, map) {
-        const sprite = map.assets['explosion'];
+        const sprite = map.assets[this.type];
         if (!sprite || !sprite.complete) return;
 
         const cols = 4;

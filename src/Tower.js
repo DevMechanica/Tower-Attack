@@ -64,6 +64,7 @@ export class Tower {
         if (this.type === 'tower_tesla') {
             // Instant Hit + Chain Lightning
             this.game.effects.spawnLightning(this.x, this.y - 40, target.x, target.y);
+            this.game.effects.spawnExplosion(target.x, target.y, 'blue_lightning'); // Impact effect
             target.takeDamage(20); // Higher instant damage
 
             // Simple Chain (find 1 neighbor)

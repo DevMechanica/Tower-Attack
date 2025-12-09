@@ -38,7 +38,17 @@ export class Projectile {
             this.target.takeDamage(this.damage);
 
             // Visuals
-            this.game.effects.spawnExplosion(this.target.x, this.target.y);
+            // Visuals
+            let explosionType = 'explosion';
+            if (this.type === 'magic') {
+                explosionType = (Math.random() < 0.5) ? 'purple_explosion' : 'colorful_explosion';
+            } else {
+                const rand = Math.random();
+                if (rand < 0.33) explosionType = 'explosion';
+                else if (rand < 0.66) explosionType = 'explosion_1';
+                else explosionType = 'explosion_2';
+            }
+            this.game.effects.spawnExplosion(this.target.x, this.target.y, explosionType);
             this.game.shake = 5; // Set shake intensity
         } else {
             // Move
