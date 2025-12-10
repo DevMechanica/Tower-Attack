@@ -63,14 +63,23 @@ export class Game {
         this.uiDock.className = `${this.role}-theme`;
 
         const items = (this.role === 'attacker')
-            ? [{ id: 'unit_basic', label: 'Grunt' }, { id: 'unit_tank', label: 'Tank' }, { id: 'unit_golem', label: 'Golem' }]
-            : [{ id: 'tower_cannon', label: 'Cannon' }, { id: 'tower_mage', label: 'Mage' }, { id: 'tower_tesla', label: 'Tesla' }];
+            ? [
+                { id: 'unit_basic', label: 'Grunt', img: 'assets/units/soldier/Main_soldier.png' },
+                { id: 'unit_tank', label: 'Tank', img: 'assets/units/unit_tank.png' },
+                { id: 'unit_golem', label: 'Golem', img: 'unit_golem.png' }
+            ]
+            : [
+                { id: 'tower_cannon', label: 'Cannon', img: 'assets/towers/Main_tower.png' },
+                { id: 'tower_mage', label: 'Mage', img: 'assets/towers/tower_mage.png' },
+                { id: 'tower_tesla', label: 'Tesla', img: 'tower_tesla.png' }
+            ];
 
         items.forEach(item => {
             const card = document.createElement('div');
             card.className = 'card';
             card.dataset.id = item.id; // For CSS matching
-            card.innerHTML = `<div class="card-icon"></div><span>${item.label}</span>`;
+            // Use img tag for the icon
+            card.innerHTML = `<img src="${item.img}" class="card-icon-img" alt="${item.label}"><span>${item.label}</span>`;
             card.onclick = () => this.selectCard(item.id, card);
             this.uiDock.appendChild(card);
         });
