@@ -11,14 +11,49 @@ export class Map {
         this.loadImage('Main_unit', 'assets/units/soldier/Main_soldier.png');
         this.loadImage('unit_tank', 'assets/units/unit_tank.png');
         this.loadImage('Main_tower', 'assets/towers/Main_tower.png');
-        this.loadImage('tower_mage', 'assets/towers/tower_mage.png');
-        this.loadImage('tower_tesla', 'tower_tesla.png');
+        this.loadImage('tower_mage', 'assets/towers/MageTower/tower_mage.png');
+        this.loadImage('tower_tesla', 'assets/towers/TeslaTowerAnima/TeslaTower-removebg-preview.png');
         this.loadImage('unit_golem', 'unit_golem.png');
         this.loadImage('explosion', 'explosion.png'); // Kept in root
 
         // Load Animations
         this.loadAnimation('soldier_walk', 'assets/units/soldier/soldier_walk', 7, 'jpg');
         this.loadAnimation('soldier_attack', 'assets/units/soldier/soldier_attack', 4, 'jpg');
+
+        // Tesla Tower Animation
+        // Files are TeslaAnim1-removebg-preview.png to TeslaAnim5-removebg-preview.png
+        // Tesla Tower Animation
+        // Files are TeslaAnim1-removebg-preview.png to TeslaAnim5-removebg-preview.png
+        this.assets['tower_tesla_anim'] = [];
+        for (let i = 1; i <= 4; i++) {
+            const img = new Image();
+            img.src = `assets/towers/TeslaTowerAnima/TeslaTowerAttack/TeslaAnim${i}-removebg-preview.png`;
+            this.assets['tower_tesla_anim'].push(img);
+        }
+
+        // Tesla Idle
+        this.assets['tower_tesla_idle'] = [];
+        for (let i = 1; i <= 4; i++) {
+            const img = new Image();
+            img.src = `assets/towers/TeslaTowerAnima/TeslaTowerIdle/TeslaAnimIdle${i}.png`;
+            this.assets['tower_tesla_idle'].push(img);
+        }
+
+        // Mage Tower Animation
+        this.assets['tower_mage_anim'] = [];
+        for (let i = 1; i <= 5; i++) {
+            const img = new Image();
+            img.src = `assets/towers/MageTower/MageTowerAttack/TowerMageAnim${i}.png`;
+            this.assets['tower_mage_anim'].push(img);
+        }
+
+        // Mage Tower Idle
+        this.assets['tower_mage_idle'] = [];
+        for (let i = 1; i <= 3; i++) {
+            const img = new Image();
+            img.src = `assets/towers/MageTower/MageTowerIdle/MageTowerIdle${i}.png`;
+            this.assets['tower_mage_idle'].push(img);
+        }
 
         this.loaded = false;
 
@@ -86,6 +121,12 @@ export class Map {
             { x: 334, y: 754, occupied: false },
             { x: 250, y: 654, occupied: false }
         ];
+    }
+
+    loadImageDirect(path) {
+        const img = new Image();
+        img.src = path;
+        return img;
     }
 
     loadImage(key, src) {
