@@ -19,6 +19,7 @@ export class Game {
         // Game State
         this.role = 'attacker'; // 'attacker' or 'defender'
         this.selectedCard = null; // 'unit_basic', 'tower_cannon', etc.
+        this.selectedTower = null;
 
         // Resources
         this.defenderLives = 20;
@@ -35,6 +36,12 @@ export class Game {
         this.uiLives = document.getElementById('defender-lives');
         this.uiGold = document.getElementById('attacker-gold');
         this.uiDock = document.getElementById('card-dock');
+        this.uiSellBtn = document.getElementById('sell-btn');
+
+        this.uiSellBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent canvas click
+            this.sellTower();
+        });
 
         // Initial Draw
         this.updateUI();
@@ -49,6 +56,18 @@ export class Game {
     updateUI() {
         if (this.uiLives) this.uiLives.innerText = Math.floor(this.defenderLives);
         if (this.uiGold) this.uiGold.innerText = Math.floor(this.attackerGold);
+
+        // Update Sell Button Position
+        if (this.selectedTower && this.uiSellBtn) {
+            const screenX = this.map.offsetX + this.selectedTower.x * this.map.scale;
+            const screenY = this.map.offsetY + this.selectedTower.y * this.map.scale;
+
+            this.uiSellBtn.style.display = 'flex';
+            this.uiSellBtn.style.left = `${screenX + 30}px`; // Offset to the right
+            this.uiSellBtn.style.top = `${screenY - 30}px`;
+        } else if (this.uiSellBtn) {
+            this.uiSellBtn.style.display = 'none';
+        }
     }
 
     toggleRole() {
@@ -107,9 +126,22 @@ export class Game {
                 // Attacker clicks usually just spawn, but maybe we want "spawn at start"?
                 // For now, clicking anywhere while card selected spawns at start (simple mobile interaction)
                 this.spawnUnit(this.selectedCard);
-            } else if (this.role === 'defender' && this.selectedCard) {
-                // Check if clicked near a slot
-                this.tryPlaceTower(coords.x, coords.y, this.selectedCard);
+            } else if (this.role === 'defender') {
+                if (this.selectedCard) {
+                    // Check if clicked near a slot
+                    this.tryPlaceTower(coords.x, coords.y, this.selectedCard);
+                } else {
+                    // Try to select a tower
+                    const clickedTower = this.towers.find(t => {
+                        return Math.abs(t.x - coords.x) < 30 && Math.abs(t.y - coords.y) < 30;
+                    });
+
+                    if (clickedTower) {
+                        this.selectedTower = clickedTower;
+                    } else {
+                        this.selectedTower = null;
+                    }
+                }
             }
         });
     }
@@ -220,5 +252,24 @@ export class Game {
         this.effects.render(this.ctx, this.map);
 
         this.ctx.restore(); // Restore from shake
+    }
+
+    sellTower() {
+        if (!this.selectedTower) return;
+
+        console.log("Selling tower", this.selectedTower);
+
+        // Find slot and free it
+        const slot = this.map.towerSlots.find(s =>
+            Math.abs(s.x - this.selectedTower.x) < 5 && Math.abs(s.y - this.selectedTower.y) < 5
+        );
+        if (slot) slot.occupied = false;
+
+        // Remove tower
+        this.towers = this.towers.filter(t => t !== this.selectedTower);
+
+        // Reset selection
+        this.selectedTower = null;
+        this.updateUI(); // Immediate update to hide button
     }
 }
