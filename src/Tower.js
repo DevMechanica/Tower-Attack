@@ -34,7 +34,7 @@ export class Tower {
 
         // Idle Animation State
         this.idleTimer = 0;
-        this.idleInterval = 3000; // Trigger every 3 seconds
+        this.idleInterval = (type === 'tower_mage') ? 0 : 3000; // Continuous for Mage, 3s for others
         // Slower idle for Mage (e.g., 1000ms vs 500ms)
         this.idleDuration = (type === 'tower_mage') ? 1000 : 500;
         this.isIdleAnimating = false;
