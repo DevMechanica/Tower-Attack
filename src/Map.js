@@ -10,7 +10,7 @@ export class Map {
         // Load individual assets with explicit paths
         this.loadImage('Main_unit', 'assets/units/soldier/Main_soldier.png');
         this.loadImage('unit_tank', 'assets/units/unit_tank.png');
-        this.loadImage('Main_tower', 'assets/towers/MageTower/TowerMage.png');
+        this.loadImage('Main_tower', 'assets/towers/Main_tower.png');
         this.loadImage('tower_mage', 'assets/towers/MageTower/TowerMage.png');
         this.loadImage('tower_tesla', 'assets/towers/TeslaTowerAnima/TeslaTower-removebg-preview.png');
         this.loadImage('unit_golem', 'unit_golem.png');
