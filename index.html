@@ -14,7 +14,7 @@
         <div id="ui-layer">
 
             <!-- New HUD / -->
-            <div id="hud-top">
+            <div id="hud-top" class="hidden">
                 <div class="player-panel defender">
                     <div class="panel-icon">🛡️</div>
                     <div class="bar-container">
@@ -40,16 +40,41 @@
                 </div>
             </div>
 
-            <button id="role-switch-btn" class="debug-btn">SWITCH ROLE</button>
+            <button id="role-switch-btn" class="debug-btn hidden">SWITCH ROLE</button>
 
             <!-- Card Dock -->
-            <div id="card-dock">
+            <div id="card-dock" class="hidden">
                 <!-- Cards injected by JS -->
             </div>
 
             <!-- Contextual Sell Button -->
             <div id="sell-btn" class="context-btn" style="display: none;">
                 <img src="assets/Icons/SellTowerIcon.png" alt="Sell">
+            </div>
+
+            <!-- Menu Button -->
+            <button id="menu-btn" class="icon-btn hidden">☰</button>
+
+            <!-- Main Menu Overlay -->
+            <div id="main-menu" class="hidden">
+                <div class="menu-content glass-panel">
+                    <h2>PAUSED</h2>
+                    <div class="menu-buttons">
+                        <button id="resume-btn" class="primary-btn">RESUME</button>
+                        <button id="restart-btn" class="secondary-btn">RESTART</button>
+                        <button id="level-select-btn" class="secondary-btn">SELECT LEVEL</button>
+                        <button id="exit-btn" class="secondary-btn">EXIT</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Welcome Screen -->
+            <div id="welcome-screen">
+                <div class="welcome-content glass-panel">
+                    <h1>TOWER ATTACK</h1>
+                    <p>Defend the base or lead the assault!</p>
+                    <button id="start-btn" class="primary-btn big-play-btn">PLAY</button>
+                </div>
             </div>
 
         </div>
