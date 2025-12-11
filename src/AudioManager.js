@@ -9,6 +9,9 @@ export class AudioManager {
 
         // Preload sounds
         this.load('click', 'assets/music/PressingButton.wav');
+        this.load('placingTower', 'assets/music/PlacingTower.wav');
+        this.load('shootingMage', 'assets/music/ShootMage.wav');
+        this.load('shootingTesla', 'assets/music/ShootTesla.wav');
 
         // Placeholders for other sounds (will fail silently or warn if missing)
         // this.load('shoot', 'assets/sounds/shoot.wav');
@@ -24,14 +27,14 @@ export class AudioManager {
         this.sounds[name] = audio;
     }
 
-    play(name) {
+    play(name, volume = 0.5) {
         if (!this.enabled) return;
 
         const sound = this.sounds[name];
         if (sound) {
             // Clone node to allow overlapping sounds
             const clone = sound.cloneNode();
-            clone.volume = 0.5; // Default volume
+            clone.volume = volume;
             clone.play().catch(e => console.warn(`Failed to play sound: ${name}`, e));
         } else {
             console.warn(`Sound not found: ${name}`);
@@ -42,9 +45,8 @@ export class AudioManager {
         this.play('click');
     }
 
-    // Placeholder methods for future implementation
-    playShoot() {
-        // this.play('shoot');
+    playShootMage() {
+        this.play('shootingMage', 0.1);
     }
 
     playHit() {
@@ -53,5 +55,11 @@ export class AudioManager {
 
     playExplode() {
         // this.play('explode');
+    }
+    playPlacingTower() {
+        this.play('placingTower');
+    }
+    playShootTesla() {
+        this.play('shootingTesla', 0.1);
     }
 }

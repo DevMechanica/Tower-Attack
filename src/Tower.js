@@ -1,5 +1,7 @@
 import { Projectile } from './Projectile.js';
 
+import { AudioManager } from './AudioManager.js';
+
 export class Tower {
     constructor(game, x, y, type) {
         this.game = game;
@@ -189,10 +191,10 @@ export class Tower {
             this.animTimer = 0;
             this.hasFired = false;
             this.currentTarget = target;
-
             // Damage is now handled in update() on the last frame
 
             this.recoil = 0.2;
+            this.game.audio.playShootTesla();
             return;
         }
 
@@ -203,6 +205,7 @@ export class Tower {
             this.animTimer = 0;
             this.hasFired = false;
             this.currentTarget = target;
+            this.game.audio.playShootMage();
             // Projectile spawn is now deferred to update()
             return;
         }

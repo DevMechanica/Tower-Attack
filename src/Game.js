@@ -173,6 +173,7 @@ export class Game {
         if (slot) {
             this.towers.push(new Tower(this, slot.x, slot.y, type));
             slot.occupied = true;
+            this.audio.playPlacingTower();
             console.log(`Placed ${type} at ${slot.x}, ${slot.y}`);
             // Deselect card after placement?
             this.selectedCard = null;
