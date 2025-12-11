@@ -1,7 +1,9 @@
 import { Map } from './Map.js';
 import { Unit } from './Unit.js';
 import { Tower } from './Tower.js';
+
 import { EffectManager } from './Effects.js';
+import { AudioManager } from './AudioManager.js';
 
 export class Game {
     constructor(canvas) {
@@ -14,6 +16,7 @@ export class Game {
         this.towers = [];
         this.projectiles = []; // New array for bullets
         this.effects = new EffectManager(this);
+        this.audio = new AudioManager();
         this.shake = 0;
 
         // Game State
@@ -40,6 +43,7 @@ export class Game {
 
         this.uiSellBtn.addEventListener('click', (e) => {
             e.stopPropagation(); // Prevent canvas click
+            this.audio.playClick();
             this.sellTower();
         });
 
@@ -47,6 +51,7 @@ export class Game {
         this.updateUI();
 
         document.getElementById('role-switch-btn').addEventListener('click', () => {
+            this.audio.playClick();
             this.toggleRole();
         });
 
@@ -99,7 +104,10 @@ export class Game {
             card.dataset.id = item.id; // For CSS matching
             // Use img tag for the icon
             card.innerHTML = `<img src="${item.img}" class="card-icon-img" alt="${item.label}"><span>${item.label}</span>`;
-            card.onclick = () => this.selectCard(item.id, card);
+            card.onclick = () => {
+                this.audio.playClick();
+                this.selectCard(item.id, card);
+            };
             this.uiDock.appendChild(card);
         });
     }
