@@ -4,11 +4,11 @@
 
 **[GAME NAME HERE]** is a mobile-first strategy game where players command swarms of units to breach enemy defenses. It features "Antigravity" physics, multiplier gate mechanics, and massive unit counts, designed for rapid development using the **Antigravity** agent orchestration framework.
 
----
+----
 
 ## 🎮 Core Mechanics
 
-* **Reverse Tower Defense:** You are the attacker. Spawn units, navigate the maze, and destroy the defenders.
+* **Reverse Tower Defense:** 
 * **Swarm Physics:** Control hundreds of units simultaneously with boid-like behavior and fluid movement.
 * **Antigravity Movement:** Units ignore standard gravity, allowing for floating paths, verticality, and unique obstacle traversal.
 * **Multiplier Gates:** Math-based gates (x2, +10) that exponentially increase your swarm size in real-time.
