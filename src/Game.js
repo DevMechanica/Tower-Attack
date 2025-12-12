@@ -29,10 +29,46 @@ export class Game {
         this.attackerGold = 100;
 
         this.resize();
+        this.resize();
         window.addEventListener('resize', () => this.resize());
+
+        this.paused = true; // Start paused or unpaused? Usually unpaused. But let's start with false.
+
+        // Game State: Welcome
+        this.gameStarted = false;
 
         this.setupUI();
         this.setupInput();
+        this.setupMenu();
+        this.setupWelcome(); // New
+    }
+
+    setupWelcome() {
+        const startBtn = document.getElementById('start-btn');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const hudTop = document.getElementById('hud-top');
+        const cardDock = document.getElementById('card-dock');
+        const roleBtn = document.getElementById('role-switch-btn');
+        const menuBtn = document.getElementById('menu-btn');
+
+        if (startBtn) {
+            startBtn.addEventListener('click', () => {
+                this.gameStarted = true;
+
+                // Transition UI
+                welcomeScreen.classList.add('hidden');
+
+                // Show HUD
+                hudTop.classList.remove('hidden');
+                cardDock.classList.remove('hidden');
+                roleBtn.classList.remove('hidden');
+                menuBtn.classList.remove('hidden');
+
+                // Start loop if not already running (or just ensure it processes updates)
+                this.lastTime = performance.now();
+                this.paused = false;
+            });
+        }
     }
 
     setupUI() {
@@ -192,9 +228,30 @@ export class Game {
     }
 
     loop(timestamp) {
+        if (!this.gameStarted) {
+            // Render only background? Or a static scene?
+            // Let's call render() but maybe skip update() so it's a frozen "title screen" behind the UI
+            // But if we want black screen fixed, we need to render the map at least.
+            this.map.updateDimensions(this.canvas.width, this.canvas.height); // Ensure sizing
+            this.render();
+            requestAnimationFrame((ts) => this.loop(ts));
+            return;
+        }
+
+        if (this.paused) {
+            this.lastTime = timestamp;
+            requestAnimationFrame((ts) => this.loop(ts));
+            return;
+        }
+
         const deltaTime = timestamp - this.lastTime;
         this.lastTime = timestamp;
-        this.update(deltaTime);
+
+        // Cap deltaTime to prevent huge jumps (e.g. tab switch)
+        // 50ms = 20 FPS minimum. If slower, game slows down instead of skipping.
+        const cappedDelta = Math.min(deltaTime, 50);
+
+        this.update(cappedDelta);
         this.render();
         requestAnimationFrame((ts) => this.loop(ts));
     }
@@ -279,6 +336,84 @@ export class Game {
 
         // Reset selection
         this.selectedTower = null;
+        this.selectedTower = null;
         this.updateUI(); // Immediate update to hide button
+    }
+
+    setupMenu() {
+        this.uiMenu = document.getElementById('main-menu');
+        this.resumeBtn = document.getElementById('resume-btn');
+        this.restartBtn = document.getElementById('restart-btn'); // New
+        this.levelSelectBtn = document.getElementById('level-select-btn');
+        this.exitBtn = document.getElementById('exit-btn');
+        const menuTrigger = document.getElementById('menu-btn');
+
+        // Toggle Pause
+        const toggle = () => this.togglePause();
+
+        if (menuTrigger) menuTrigger.addEventListener('click', toggle);
+        if (this.resumeBtn) this.resumeBtn.addEventListener('click', toggle);
+
+        if (this.restartBtn) {
+            this.restartBtn.addEventListener('click', () => {
+                this.restart();
+            });
+        }
+
+        // Placeholders
+        if (this.levelSelectBtn) {
+            this.levelSelectBtn.addEventListener('click', () => {
+                console.log('Select Level clicked');
+            });
+        }
+
+        if (this.exitBtn) {
+            this.exitBtn.addEventListener('click', () => {
+                console.log('Exit clicked');
+            });
+        }
+
+        // Key Listener for ESC
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.togglePause();
+            }
+        });
+    }
+
+    togglePause() {
+        this.paused = !this.paused;
+        if (this.paused) {
+            this.uiMenu.classList.remove('hidden');
+        } else {
+            this.uiMenu.classList.add('hidden');
+            this.lastTime = performance.now(); // Reset time to avoid jump
+        }
+    }
+
+    restart() {
+        // Reset Game State
+        this.units = [];
+        this.towers = [];
+        this.projectiles = [];
+        this.effects.emitters = []; // Assuming effects manager has clear or we just wait for them to die? Accessing internal array directly if possible.
+        // Actually Effects.js might not expose it easily, let's just ignore or assume they fade out.
+        // Checking Effects.js import... standard class. Let's assume it handles itself or we leave lingering fx for a second.
+
+        this.defenderLives = 20;
+        this.attackerGold = 100;
+        this.role = 'attacker';
+        this.selectedCard = null;
+        this.selectedTower = null;
+
+        // Reset Map Slots
+        this.map.towerSlots.forEach(slot => slot.occupied = false);
+
+        // UI Reset
+        this.togglePause(); // Unpause and hide menu
+        this.renderCards(); // Reset to attacker theme
+        this.updateUI();
+
+        console.log("Game Restarted");
     }
 }

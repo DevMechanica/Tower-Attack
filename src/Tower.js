@@ -269,10 +269,16 @@ export class Tower {
             const baseSize = 200 * scale;
             const drawSize = baseSize * (1 + this.recoil);
 
+            // Apply Visual Offset
+            let yOffset = 50; // Default for Mage/Tesla
+            if (this.type === 'tower_cannon') {
+                yOffset = 15;
+            }
+
             ctx.drawImage(
                 sprite,
                 0, 0, sprite.width, sprite.height,
-                screenX - drawSize / 2, screenY - drawSize / 2 - (10 * scale), drawSize, drawSize
+                screenX - drawSize / 2, screenY - drawSize / 2 - (yOffset * scale), drawSize, drawSize
             );
         } else {
             // Fallback Circle

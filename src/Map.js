@@ -105,7 +105,7 @@ export class Map {
 
         // Tower Slots provided by user (Defender build spots)
         this.towerSlots = [
-            { x: 487, y: 520, occupied: false },
+            { x: 486, y: 532, occupied: false }, // Updated per user debug
             { x: 668, y: 417, occupied: false },
             { x: 726, y: 334, occupied: false },
             { x: 779, y: 262, occupied: false },
@@ -117,9 +117,9 @@ export class Map {
             { x: 779, y: 810, occupied: false },
             { x: 634, y: 799, occupied: false },
             { x: 467, y: 715, occupied: false },
-            { x: 479, y: 529, occupied: false }, // Duplicate close to first? Keeping both for now.
             { x: 334, y: 754, occupied: false },
-            { x: 250, y: 654, occupied: false }
+            { x: 250, y: 654, occupied: false },
+            { x: 534, y: 652, occupied: false } // New slot added per user request
         ];
     }
 
