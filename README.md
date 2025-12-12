@@ -4,7 +4,7 @@
 
 **[GAME NAME HERE]** is a mobile-first strategy game where players command swarms of units to breach enemy defenses. It features "Antigravity" physics, multiplier gate mechanics, and massive unit counts, designed for rapid development using the **Antigravity** agent orchestration framework.
 
----
+----
 
 ## 🎮 Core Mechanics
 

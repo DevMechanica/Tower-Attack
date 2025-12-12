@@ -2,15 +2,58 @@ export class Map {
     constructor(game) {
         this.game = game;
         this.background = new Image();
-        this.background.src = 'background.jpg'; // Relative to index.html (in root)
+        this.background.src = 'assets/background.jpg'; // Relative to index.html (in root)
 
         // Asset Loading
         this.assets = {};
-        this.loadAssets(['Main_unit', 'unit_tank', 'Main_tower', 'tower_mage']);
+
+        // Load individual assets with explicit paths
+        this.loadImage('Main_unit', 'assets/units/soldier/Main_soldier.png');
+        this.loadImage('unit_tank', 'assets/units/unit_tank.png');
+        this.loadImage('Main_tower', 'assets/towers/Main_tower.png');
+        this.loadImage('tower_mage', 'assets/towers/MageTower/TowerMage.png');
+        this.loadImage('tower_tesla', 'assets/towers/TeslaTowerAnima/TeslaTower-removebg-preview.png');
+        this.loadImage('unit_golem', 'unit_golem.png');
+        this.loadImage('explosion', 'explosion.png'); // Kept in root
 
         // Load Animations
-        this.loadAnimation('soldier_walk', 7, 'jpg');
-        this.loadAnimation('soldier_attack', 4, 'jpg');
+        this.loadAnimation('soldier_walk', 'assets/units/soldier/soldier_walk', 7, 'jpg');
+        this.loadAnimation('soldier_attack', 'assets/units/soldier/soldier_attack', 4, 'jpg');
+
+        // Tesla Tower Animation
+        // Files are TeslaAnim1-removebg-preview.png to TeslaAnim5-removebg-preview.png
+        // Tesla Tower Animation
+        // Files are TeslaAnim1-removebg-preview.png to TeslaAnim5-removebg-preview.png
+        this.assets['tower_tesla_anim'] = [];
+        for (let i = 1; i <= 4; i++) {
+            const img = new Image();
+            img.src = `assets/towers/TeslaTowerAnima/TeslaTowerAttack/TeslaAnim${i}-removebg-preview.png`;
+            this.assets['tower_tesla_anim'].push(img);
+        }
+
+        // Tesla Idle
+        this.assets['tower_tesla_idle'] = [];
+        for (let i = 1; i <= 4; i++) {
+            const img = new Image();
+            img.src = `assets/towers/TeslaTowerAnima/TeslaTowerIdle/TeslaAnimIdle${i}.png`;
+            this.assets['tower_tesla_idle'].push(img);
+        }
+
+        // Mage Tower Animation
+        this.assets['tower_mage_anim'] = [];
+        for (let i = 1; i <= 5; i++) {
+            const img = new Image();
+            img.src = `assets/towers/MageTower/MageTowerAttack/TowerMageAnim${i}.png`;
+            this.assets['tower_mage_anim'].push(img);
+        }
+
+        // Mage Tower Idle
+        this.assets['tower_mage_idle'] = [];
+        for (let i = 1; i <= 3; i++) {
+            const img = new Image();
+            img.src = `assets/towers/MageTower/MageTowerIdle/MageTowerIdle${i}.png`;
+            this.assets['tower_mage_idle'].push(img);
+        }
 
         this.loaded = false;
 
@@ -62,7 +105,7 @@ export class Map {
 
         // Tower Slots provided by user (Defender build spots)
         this.towerSlots = [
-            { x: 487, y: 520, occupied: false },
+            { x: 486, y: 532, occupied: false }, // Updated per user debug
             { x: 668, y: 417, occupied: false },
             { x: 726, y: 334, occupied: false },
             { x: 779, y: 262, occupied: false },
@@ -74,13 +117,27 @@ export class Map {
             { x: 779, y: 810, occupied: false },
             { x: 634, y: 799, occupied: false },
             { x: 467, y: 715, occupied: false },
-            { x: 479, y: 529, occupied: false }, // Duplicate close to first? Keeping both for now.
             { x: 334, y: 754, occupied: false },
-            { x: 250, y: 654, occupied: false }
+            { x: 250, y: 654, occupied: false },
+            { x: 534, y: 652, occupied: false } // New slot added per user request
         ];
     }
 
+    loadImageDirect(path) {
+        const img = new Image();
+        img.src = path;
+        return img;
+    }
+
+    loadImage(key, src) {
+        const img = new Image();
+        img.src = src;
+        this.assets[key] = img;
+    }
+
     loadAssets(names) {
+        // Deprecated or can be removed if not used anymore
+        // keeping implementation just in case but we use loadImage now
         names.forEach(name => {
             const img = new Image();
             img.src = `${name}.png`;
@@ -88,13 +145,13 @@ export class Map {
         });
     }
 
-    loadAnimation(baseName, count, ext = 'png') {
-        this.assets[baseName] = [];
+    loadAnimation(key, pathPrefix, count, ext = 'png') {
+        this.assets[key] = [];
         for (let i = 1; i <= count; i++) {
             const img = new Image();
             const num = i.toString().padStart(2, '0');
-            img.src = `${baseName}_${num}.${ext}`;
-            this.assets[baseName].push(img);
+            img.src = `${pathPrefix}_${num}.${ext}`;
+            this.assets[key].push(img);
         }
     }
 

@@ -2,6 +2,9 @@ import { Map } from './Map.js';
 import { Unit } from './Unit.js';
 import { Tower } from './Tower.js';
 
+import { EffectManager } from './Effects.js';
+import { AudioManager } from './AudioManager.js';
+
 export class Game {
     constructor(canvas) {
         this.canvas = canvas;
@@ -12,37 +15,106 @@ export class Game {
         this.units = [];
         this.towers = [];
         this.projectiles = []; // New array for bullets
-
-        // Constants for Sprite Atlas (Percentages 0-1 for flexibility)
-        this.towers = [];
-        this.projectiles = []; // New array for bullets
+        this.effects = new EffectManager(this);
+        this.audio = new AudioManager();
+        this.shake = 0;
 
         // Game State
         this.role = 'attacker'; // 'attacker' or 'defender'
         this.selectedCard = null; // 'unit_basic', 'tower_cannon', etc.
+        this.selectedTower = null;
 
+        // Resources
+        this.defenderLives = 20;
+        this.attackerGold = 100;
+
+        this.resize();
         this.resize();
         window.addEventListener('resize', () => this.resize());
 
+        this.paused = true; // Start paused or unpaused? Usually unpaused. But let's start with false.
+
+        // Game State: Welcome
+        this.gameStarted = false;
+
         this.setupUI();
         this.setupInput();
+        this.setupMenu();
+        this.setupWelcome(); // New
+    }
+
+    setupWelcome() {
+        const startBtn = document.getElementById('start-btn');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const hudTop = document.getElementById('hud-top');
+        const cardDock = document.getElementById('card-dock');
+        const roleBtn = document.getElementById('role-switch-btn');
+        const menuBtn = document.getElementById('menu-btn');
+
+        if (startBtn) {
+            startBtn.addEventListener('click', () => {
+                this.gameStarted = true;
+
+                // Transition UI
+                welcomeScreen.classList.add('hidden');
+
+                // Show HUD
+                hudTop.classList.remove('hidden');
+                cardDock.classList.remove('hidden');
+                roleBtn.classList.remove('hidden');
+                menuBtn.classList.remove('hidden');
+
+                // Start loop if not already running (or just ensure it processes updates)
+                this.lastTime = performance.now();
+                this.paused = false;
+            });
+        }
     }
 
     setupUI() {
-        this.uiRoleText = document.getElementById('role-indicator');
+        this.uiLives = document.getElementById('defender-lives');
+        this.uiGold = document.getElementById('attacker-gold');
         this.uiDock = document.getElementById('card-dock');
+        this.uiSellBtn = document.getElementById('sell-btn');
+
+        this.uiSellBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent canvas click
+            this.audio.playClick();
+            this.sellTower();
+        });
+
+        // Initial Draw
+        this.updateUI();
 
         document.getElementById('role-switch-btn').addEventListener('click', () => {
+            this.audio.playClick();
             this.toggleRole();
         });
 
         this.renderCards();
     }
 
+    updateUI() {
+        if (this.uiLives) this.uiLives.innerText = Math.floor(this.defenderLives);
+        if (this.uiGold) this.uiGold.innerText = Math.floor(this.attackerGold);
+
+        // Update Sell Button Position
+        if (this.selectedTower && this.uiSellBtn) {
+            const screenX = this.map.offsetX + this.selectedTower.x * this.map.scale;
+            const screenY = this.map.offsetY + this.selectedTower.y * this.map.scale;
+
+            this.uiSellBtn.style.display = 'flex';
+            this.uiSellBtn.style.left = `${screenX + 30}px`; // Offset to the right
+            this.uiSellBtn.style.top = `${screenY - 30}px`;
+        } else if (this.uiSellBtn) {
+            this.uiSellBtn.style.display = 'none';
+        }
+    }
+
     toggleRole() {
         this.role = (this.role === 'attacker') ? 'defender' : 'attacker';
         this.selectedCard = null;
-        this.uiRoleText.innerText = this.role.toUpperCase();
+        // this.uiRoleText.innerText = this.role.toUpperCase(); // Old indicator removed
         this.renderCards();
     }
 
@@ -51,15 +123,27 @@ export class Game {
         this.uiDock.className = `${this.role}-theme`;
 
         const items = (this.role === 'attacker')
-            ? [{ id: 'unit_basic', label: 'Grunt' }, { id: 'unit_tank', label: 'Tank' }]
-            : [{ id: 'tower_cannon', label: 'Cannon' }, { id: 'tower_mage', label: 'Mage' }];
+            ? [
+                { id: 'unit_basic', label: 'Grunt', img: 'assets/units/soldier/Main_soldier.png' },
+                { id: 'unit_tank', label: 'Tank', img: 'assets/units/unit_tank.png' },
+                { id: 'unit_golem', label: 'Golem', img: 'unit_golem.png' }
+            ]
+            : [
+                { id: 'tower_cannon', label: 'Cannon', img: 'assets/towers/Main_tower.png' },
+                { id: 'tower_mage', label: 'Mage', img: 'assets/towers/tower_mage.png' },
+                { id: 'tower_tesla', label: 'Tesla', img: 'tower_tesla.png' }
+            ];
 
         items.forEach(item => {
             const card = document.createElement('div');
             card.className = 'card';
             card.dataset.id = item.id; // For CSS matching
-            card.innerHTML = `<div class="card-icon"></div><span>${item.label}</span>`;
-            card.onclick = () => this.selectCard(item.id, card);
+            // Use img tag for the icon
+            card.innerHTML = `<img src="${item.img}" class="card-icon-img" alt="${item.label}"><span>${item.label}</span>`;
+            card.onclick = () => {
+                this.audio.playClick();
+                this.selectCard(item.id, card);
+            };
             this.uiDock.appendChild(card);
         });
     }
@@ -86,9 +170,22 @@ export class Game {
                 // Attacker clicks usually just spawn, but maybe we want "spawn at start"?
                 // For now, clicking anywhere while card selected spawns at start (simple mobile interaction)
                 this.spawnUnit(this.selectedCard);
-            } else if (this.role === 'defender' && this.selectedCard) {
-                // Check if clicked near a slot
-                this.tryPlaceTower(coords.x, coords.y, this.selectedCard);
+            } else if (this.role === 'defender') {
+                if (this.selectedCard) {
+                    // Check if clicked near a slot
+                    this.tryPlaceTower(coords.x, coords.y, this.selectedCard);
+                } else {
+                    // Try to select a tower
+                    const clickedTower = this.towers.find(t => {
+                        return Math.abs(t.x - coords.x) < 30 && Math.abs(t.y - coords.y) < 30;
+                    });
+
+                    if (clickedTower) {
+                        this.selectedTower = clickedTower;
+                    } else {
+                        this.selectedTower = null;
+                    }
+                }
             }
         });
     }
@@ -112,6 +209,7 @@ export class Game {
         if (slot) {
             this.towers.push(new Tower(this, slot.x, slot.y, type));
             slot.occupied = true;
+            this.audio.playPlacingTower();
             console.log(`Placed ${type} at ${slot.x}, ${slot.y}`);
             // Deselect card after placement?
             this.selectedCard = null;
@@ -130,9 +228,30 @@ export class Game {
     }
 
     loop(timestamp) {
+        if (!this.gameStarted) {
+            // Render only background? Or a static scene?
+            // Let's call render() but maybe skip update() so it's a frozen "title screen" behind the UI
+            // But if we want black screen fixed, we need to render the map at least.
+            this.map.updateDimensions(this.canvas.width, this.canvas.height); // Ensure sizing
+            this.render();
+            requestAnimationFrame((ts) => this.loop(ts));
+            return;
+        }
+
+        if (this.paused) {
+            this.lastTime = timestamp;
+            requestAnimationFrame((ts) => this.loop(ts));
+            return;
+        }
+
         const deltaTime = timestamp - this.lastTime;
         this.lastTime = timestamp;
-        this.update(deltaTime);
+
+        // Cap deltaTime to prevent huge jumps (e.g. tab switch)
+        // 50ms = 20 FPS minimum. If slower, game slows down instead of skipping.
+        const cappedDelta = Math.min(deltaTime, 50);
+
+        this.update(cappedDelta);
         this.render();
         requestAnimationFrame((ts) => this.loop(ts));
     }
@@ -147,10 +266,28 @@ export class Game {
 
         this.projectiles.forEach(p => p.update(deltaTime));
         this.projectiles = this.projectiles.filter(p => p.active);
+
+        this.effects.update(deltaTime);
+
+        // Shake Decay
+        if (this.shake > 0) {
+            this.shake -= deltaTime * 0.05; // Decay speed
+            if (this.shake < 0) this.shake = 0;
+        }
+
+        this.updateUI();
     }
 
     render() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.ctx.save();
+        if (this.shake > 0) {
+            const dx = (Math.random() - 0.5) * this.shake * 2;
+            const dy = (Math.random() - 0.5) * this.shake * 2;
+            this.ctx.translate(dx, dy);
+        }
+
         this.map.render(this.ctx);
 
         // Draw Slots if Defender
@@ -171,8 +308,112 @@ export class Game {
             });
         }
 
-        this.towers.forEach(tower => tower.render(this.ctx, this.map));
-        this.units.forEach(unit => unit.render(this.ctx, this.map));
+        // Y-Sort Render
+        const entities = [...this.towers, ...this.units];
+        entities.sort((a, b) => a.y - b.y);
+
+        entities.forEach(entity => entity.render(this.ctx, this.map));
+
         this.projectiles.forEach(p => p.render(this.ctx, this.map));
+        this.effects.render(this.ctx, this.map);
+
+        this.ctx.restore(); // Restore from shake
+    }
+
+    sellTower() {
+        if (!this.selectedTower) return;
+
+        console.log("Selling tower", this.selectedTower);
+
+        // Find slot and free it
+        const slot = this.map.towerSlots.find(s =>
+            Math.abs(s.x - this.selectedTower.x) < 5 && Math.abs(s.y - this.selectedTower.y) < 5
+        );
+        if (slot) slot.occupied = false;
+
+        // Remove tower
+        this.towers = this.towers.filter(t => t !== this.selectedTower);
+
+        // Reset selection
+        this.selectedTower = null;
+        this.selectedTower = null;
+        this.updateUI(); // Immediate update to hide button
+    }
+
+    setupMenu() {
+        this.uiMenu = document.getElementById('main-menu');
+        this.resumeBtn = document.getElementById('resume-btn');
+        this.restartBtn = document.getElementById('restart-btn'); // New
+        this.levelSelectBtn = document.getElementById('level-select-btn');
+        this.exitBtn = document.getElementById('exit-btn');
+        const menuTrigger = document.getElementById('menu-btn');
+
+        // Toggle Pause
+        const toggle = () => this.togglePause();
+
+        if (menuTrigger) menuTrigger.addEventListener('click', toggle);
+        if (this.resumeBtn) this.resumeBtn.addEventListener('click', toggle);
+
+        if (this.restartBtn) {
+            this.restartBtn.addEventListener('click', () => {
+                this.restart();
+            });
+        }
+
+        // Placeholders
+        if (this.levelSelectBtn) {
+            this.levelSelectBtn.addEventListener('click', () => {
+                console.log('Select Level clicked');
+            });
+        }
+
+        if (this.exitBtn) {
+            this.exitBtn.addEventListener('click', () => {
+                console.log('Exit clicked');
+            });
+        }
+
+        // Key Listener for ESC
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.togglePause();
+            }
+        });
+    }
+
+    togglePause() {
+        this.paused = !this.paused;
+        if (this.paused) {
+            this.uiMenu.classList.remove('hidden');
+        } else {
+            this.uiMenu.classList.add('hidden');
+            this.lastTime = performance.now(); // Reset time to avoid jump
+        }
+    }
+
+    restart() {
+        // Reset Game State
+        this.units = [];
+        this.towers = [];
+        this.projectiles = [];
+        this.effects.emitters = []; // Assuming effects manager has clear or we just wait for them to die? Accessing internal array directly if possible.
+        // Actually Effects.js might not expose it easily, let's just ignore or assume they fade out.
+        // Checking Effects.js import... standard class. Let's assume it handles itself or we leave lingering fx for a second.
+
+        this.defenderLives = 20;
+        this.attackerGold = 100;
+        this.role = 'attacker';
+        this.selectedCard = null;
+        this.selectedTower = null;
+
+        // Reset Map Slots
+        this.map.towerSlots.forEach(slot => slot.occupied = false);
+
+        // UI Reset
+        this.togglePause(); // Unpause and hide menu
+        this.renderCards(); // Reset to attacker theme
+        this.updateUI();
+
+        console.log("Game Restarted");
     }
 }

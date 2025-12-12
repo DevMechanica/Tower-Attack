@@ -36,6 +36,10 @@ export class Projectile {
             // Hit!
             this.active = false;
             this.target.takeDamage(this.damage);
+
+            // Visuals
+            this.game.effects.spawnExplosion(this.target.x, this.target.y);
+            this.game.shake = 5; // Set shake intensity
         } else {
             // Move
             const moveX = (dx / dist) * this.speed * (deltaTime / 1000);

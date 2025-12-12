@@ -16,11 +16,25 @@ export class Unit {
             this.y = 0;
         }
 
-        this.speed = (this.type === 'unit_tank') ? 60 : 100;
-        this.radius = (this.type === 'unit_tank') ? 20 : 15;
+        // Stats
+        this.speed = 100;
+        this.health = 100;
+        this.maxHealth = 100;
+        this.radius = 15;
+
+        if (this.type === 'unit_tank') {
+            this.health = 300;
+            this.maxHealth = 300;
+            this.speed = 60;
+            this.radius = 20;
+        } else if (this.type === 'unit_golem') {
+            this.health = 800; // Tanky
+            this.maxHealth = 800;
+            this.speed = 40; // Slow
+            this.radius = 25;
+        }
+
         this.active = true;
-        this.health = (this.type === 'unit_tank') ? 300 : 100;
-        this.maxHealth = this.health;
 
         // Combat
         this.range = 150;
@@ -31,16 +45,21 @@ export class Unit {
         this.color = '#4da6ff';
 
         // Animation
-        this.animState = 'walk'; // 'walk' or 'attack'
+        this.animState = 'walk';
         this.animFrame = 0;
         this.animTimer = 0;
-        this.animSpeed = 0.1; // Seconds per frame
+        this.animSpeed = 0.1;
+        this.attackAnim = 0;
     }
 
     takeDamage(amount) {
         this.health -= amount;
         if (this.health <= 0) {
             this.active = false;
+            // Visuals
+            this.game.effects.spawnExplosion(this.x, this.y);
+            // Grant Gold
+            this.game.attackerGold += (this.type === 'unit_golem' ? 50 : 10);
         }
     }
 
@@ -74,9 +93,7 @@ export class Unit {
                 // Shoot!
                 this.game.projectiles.push(new Projectile(this.game, this.x, this.y, target, 'bullet'));
                 this.cooldown = this.maxCooldown;
-                this.attackAnim = 0.3; // Attack animation timer (seconds)
-                this.tx = target.x; // Target snapshot for lunge
-                this.ty = target.y;
+                this.attackAnim = 0.3;
             }
         }
 
@@ -89,8 +106,8 @@ export class Unit {
         if (!target) {
             // Reached the end
             this.active = false;
-            console.log("Unit reached base!");
-            // TODO: Deal damage to defender base
+            // Damage defender
+            this.game.defenderLives -= 1;
             return;
         }
 
@@ -100,10 +117,8 @@ export class Unit {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance < 5) {
-            // Reached waypoint, move to next
             this.currentPointIndex++;
         } else {
-            // Normalize and move
             const moveX = (dx / distance) * this.speed * (deltaTime / 1000);
             const moveY = (dy / distance) * this.speed * (deltaTime / 1000);
             this.x += moveX;
@@ -114,15 +129,7 @@ export class Unit {
     render(ctx, map) {
         if (!this.active) return;
 
-        // Update Animation Frame
-        this.animTimer += 1 / 60; // Assuming ~60fps, or pass deltaTime to render if available? 
-        // Actually render usually doesn't take deltaTime in this engine structure often, 
-        // but let's check if we can use a fixed step or if we should rely on update() for timer.
-        // For visual smoothness, best to update visuals in render or update. 
-        // Let's use a simple incrementer here since we don't have dt in render signature easily without changing call site.
-        // Wait, Map.js update calls render(ctx). Game.js calls render(ctx).
-        // Let's just use a small constant for now or use the fact that this is called every frame.
-
+        this.animTimer += 1 / 60;
         if (this.animTimer >= this.animSpeed) {
             this.animTimer = 0;
             this.animFrame++;
@@ -130,25 +137,6 @@ export class Unit {
 
         let renderX = this.x;
         let renderY = this.y;
-
-        // Procedural Attack Lunge (keep or remove? user wants animation now)
-        // If we have an attack animation, we might not need the lunge as much, 
-        // but let's keep it subtle or disable it if it conflicts. 
-        // The user identified animations for shooting.
-
-        // Determine State
-        // If attackAnim > 0 (from update logic), we are attacking
-        if (this.attackAnim > 0) {
-            if (this.animState !== 'attack') {
-                this.animState = 'attack';
-                this.animFrame = 0;
-            }
-        } else {
-            if (this.animState !== 'walk') {
-                this.animState = 'walk';
-                this.animFrame = 0;
-            }
-        }
 
         const screenX = map.offsetX + renderX * map.scale;
         const screenY = map.offsetY + renderY * map.scale;
@@ -159,15 +147,12 @@ export class Unit {
         let isSequence = false;
 
         if (this.type === 'unit_basic') {
-            if (this.animState === 'attack') {
-                assetName = 'soldier_attack';
-                isSequence = true;
-            } else {
-                assetName = 'soldier_walk';
-                isSequence = true;
-            }
+            assetName = 'soldier_walk'; // Simplify to always walk for now
+            isSequence = true;
         } else if (this.type === 'unit_tank') {
             assetName = 'unit_tank';
+        } else if (this.type === 'unit_golem') {
+            assetName = 'unit_golem';
         } else {
             assetName = 'Main_unit';
         }
@@ -176,7 +161,6 @@ export class Unit {
         if (isSequence) {
             const frames = map.assets[assetName];
             if (frames && frames.length > 0) {
-                // Loop
                 const frameIdx = this.animFrame % frames.length;
                 sprite = frames[frameIdx];
             }
@@ -186,31 +170,28 @@ export class Unit {
 
         // Sprite Drawing
         if (sprite && sprite.complete) {
-            const drawSize = (this.type === 'unit_tank' ? 80 : 60) * scale;
-
-            // Flip logic if moving left?
-            // Since we only have one direction images, we might need to flip canvas if dx < 0.
-            // But for now let's just draw.
+            let drawSize = 60 * scale;
+            if (this.type === 'unit_tank') drawSize = 80 * scale;
+            if (this.type === 'unit_golem') drawSize = 100 * scale;
 
             ctx.drawImage(
                 sprite,
                 0, 0, sprite.width, sprite.height,
-                screenX - drawSize / 2, screenY - drawSize / 2, drawSize, drawSize
+                screenX - drawSize / 2, screenY - drawSize / 2 - (drawSize * 0.2), drawSize, drawSize
             );
 
         } else {
             // Fallback Circle
-            const size = this.radius * map.scale;
             ctx.fillStyle = this.color;
             ctx.beginPath();
-            ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
+            ctx.arc(screenX, screenY, this.radius * map.scale, 0, Math.PI * 2);
             ctx.fill();
         }
 
         // Draw Health Bar
         const barWidth = 30 * map.scale;
         const barHeight = 4 * map.scale;
-        const barY = screenY - (this.radius * map.scale) - 15 * map.scale;
+        const barY = screenY - (this.radius * map.scale) - 20 * map.scale;
 
         ctx.fillStyle = 'red';
         ctx.fillRect(screenX - barWidth / 2, barY, barWidth, barHeight);
