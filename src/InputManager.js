@@ -2,7 +2,8 @@
 export const CommandType = {
     SPAWN_UNIT: 'SPAWN_UNIT',
     PLACE_TOWER: 'PLACE_TOWER',
-    SELL_TOWER: 'SELL_TOWER'
+    SELL_TOWER: 'SELL_TOWER',
+    READY: 'READY'
 };
 
 export class InputManager {
@@ -27,6 +28,8 @@ export class InputManager {
     handleMouseDown(e) {
         const coords = this.map.getGameCoordinates(e.clientX, e.clientY);
         if (!coords) return;
+
+        console.log("[Input] Clicked:", coords);
 
         // 1. Spawning / Placing
         if (this.selectedCard) {
@@ -56,8 +59,9 @@ export class InputManager {
         // Hit Test against towers in GameState
         // We need to access towers.
         const towers = this.gameState.towers;
+        console.log("[Input] Checking towers:", towers.length);
         const clickedTower = towers.find(t => {
-            return Math.abs(t.x - coords.x) < 30 && Math.abs(t.y - coords.y) < 30;
+            return Math.abs(t.x - coords.x) < 60 && Math.abs(t.y - coords.y) < 60;
         });
 
         if (clickedTower) {

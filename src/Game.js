@@ -31,6 +31,25 @@ export class Game {
         this.network = new NetworkManager();
         this.network.setCommandHandler((cmd) => this.executeCommand(cmd));
 
+        // Listen for Role Assignment
+        this.network.onRoleAssigned = (role) => {
+            console.log(`[Game] Role Assigned: ${role.toUpperCase()}`);
+            this.role = role;
+            this.renderCards();
+
+            // Visual Indicator
+            const roleBtn = document.getElementById('role-switch-btn');
+            if (roleBtn) {
+                roleBtn.innerText = `Role: ${role.toUpperCase()}`;
+                roleBtn.disabled = true; // Lock it
+                roleBtn.style.opacity = "0.7";
+                roleBtn.style.cursor = "default";
+            }
+        };
+
+        // Start Connection Logic NOW, after listeners are ready
+        this.network.connect();
+
         // --- 5. Input Layer ---
         this.input = new InputManager(canvas, this.map, this.network, this.state);
         this.input.setupListeners(); // Ensure we actually start listening!
@@ -58,6 +77,22 @@ export class Game {
         // Initial Resize
         this.resize();
         window.addEventListener('resize', () => this.resize());
+
+        // Right Click Cancel
+        this.canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            this.deselectAll();
+        });
+    }
+
+    deselectAll() {
+        this.input.selectedCard = null;
+        this.input.selectedEntity = null;
+        // Update UI visuals
+        const prev = document.querySelector('.card.selected');
+        if (prev) prev.classList.remove('selected');
+        this.renderCards(); // Refresh dock state if needed
+        this.updateUI(); // Hide sell button
     }
 
     // --- State Proxies for Unit/Tower/Effects ---
@@ -126,6 +161,22 @@ export class Game {
     executeCommand(cmd) {
         console.log("Executing", cmd);
 
+        if (cmd.type === CommandType.READY) {
+            // Ignore our own Ready signal (handled by UI click)
+            if (cmd.playerId === this.network.clientId) return;
+
+            console.log(`[Game] Opponent ${cmd.playerId} is READY`);
+            this.remoteReady = true;
+            this.checkStartCondition();
+
+            // Update Text if waiting
+            const statusParams = document.querySelector('#welcome-screen p');
+            if (statusParams && !this.gameStarted) {
+                statusParams.innerText = "Opponent is Ready! Waiting for you...";
+                statusParams.style.color = "#00ff00";
+            }
+        }
+
         if (cmd.type === CommandType.SPAWN_UNIT) {
             // Logic moved from spawnUnit
             // Validation: Check Gold?
@@ -175,6 +226,34 @@ export class Game {
     }
 
 
+    // --- Lobby Logic ---
+    checkStartCondition() {
+        if (this.localReady && this.remoteReady && !this.gameStarted) {
+            console.log("[Game] Both Players Ready! STARTING!");
+            this.startGameplay();
+        }
+    }
+
+    startGameplay() {
+        this.gameStarted = true;
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const hudTop = document.getElementById('hud-top');
+        const cardDock = document.getElementById('card-dock');
+        const roleBtn = document.getElementById('role-switch-btn');
+        const menuBtn = document.getElementById('menu-btn');
+
+        if (welcomeScreen) welcomeScreen.classList.add('hidden');
+        if (hudTop) hudTop.classList.remove('hidden');
+        if (cardDock) cardDock.classList.remove('hidden');
+        if (roleBtn) roleBtn.classList.remove('hidden');
+        if (menuBtn) menuBtn.classList.remove('hidden');
+
+        this.paused = false;
+        this.lastTime = performance.now();
+        this.start(); // Start the Loop!
+    }
+
+
     // --- Legacy/UI Glue ---
     // (Adapted from old Game.js)
 
@@ -189,23 +268,29 @@ export class Game {
 
     setupWelcome() {
         const startBtn = document.getElementById('start-btn');
-        const welcomeScreen = document.getElementById('welcome-screen');
-        const hudTop = document.getElementById('hud-top');
-        const cardDock = document.getElementById('card-dock');
-        const roleBtn = document.getElementById('role-switch-btn');
-        const menuBtn = document.getElementById('menu-btn');
+        const statusText = document.querySelector('#welcome-content p') || document.querySelector('#welcome-screen p');
+
+        this.localReady = false;
+        this.remoteReady = false;
 
         if (startBtn) {
+            startBtn.innerText = "READY?";
+
             startBtn.addEventListener('click', () => {
-                this.gameStarted = true;
-                welcomeScreen.classList.add('hidden');
-                hudTop.classList.remove('hidden');
-                cardDock.classList.remove('hidden');
-                roleBtn.classList.remove('hidden');
-                menuBtn.classList.remove('hidden');
-                this.paused = false;
-                this.lastTime = performance.now();
-                this.start(); // Start the Loop!
+                if (this.localReady) return; // Already clicked
+
+                this.localReady = true;
+                startBtn.innerText = "WAITING...";
+                startBtn.disabled = true;
+                startBtn.style.opacity = "0.5";
+
+                if (statusText) statusText.innerText = "Waiting for other player...";
+
+                // Broadcast Ready
+                this.network.sendCommand({ type: CommandType.READY });
+
+                // Check if we are second to join (opponent already ready)
+                this.checkStartCondition();
             });
         }
     }
@@ -225,10 +310,8 @@ export class Game {
             });
         }
 
-        document.getElementById('role-switch-btn').addEventListener('click', () => {
-            this.audio.playClick();
-            this.toggleRole();
-        });
+        // Manual Role Switch REMOVED - Handled by Network
+        // document.getElementById('role-switch-btn').addEventListener('click', ...
 
         this.renderCards();
     }
@@ -242,12 +325,17 @@ export class Game {
             // Need screen coordinates. Renderer/Map knows?
             // Map knows.
             const entity = this.input.selectedEntity;
-            const screenX = this.map.offsetX + entity.x * this.map.scale;
-            const screenY = this.map.offsetY + entity.y * this.map.scale;
+
+            // Calculate Screen Coordinates using Map logic
+            // (x * scale) + offsetX
+            const screenX = (entity.x * this.map.scale) + this.map.offsetX;
+            const screenY = (entity.y * this.map.scale) + this.map.offsetY;
+
+            console.log(`[UI] Show Sell Btn at ${screenX}, ${screenY}`);
 
             this.uiSellBtn.style.display = 'flex';
-            this.uiSellBtn.style.left = `${screenX + 30}px`;
-            this.uiSellBtn.style.top = `${screenY - 30}px`;
+            this.uiSellBtn.style.left = `${screenX + 30}px`; // Offset to right
+            this.uiSellBtn.style.top = `${screenY - 30}px`;  // Offset up
         } else if (this.uiSellBtn) {
             this.uiSellBtn.style.display = 'none';
         }

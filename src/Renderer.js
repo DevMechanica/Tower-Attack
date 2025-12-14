@@ -14,7 +14,36 @@ export class Renderer {
         // Ideally GameState has 'events' or Renderer manages its own effects.
         // Let's ignore shake for a moment or add it later.
 
-        if (map) map.render(this.ctx);
+        if (map) {
+            map.render(this.ctx);
+
+            // Draw Tower Slots (Placeholders)
+            // Need to know if we are in placement mode? 
+            // Or just always show them for Defender?
+            // For now, let's always show unoccupied slots slightly visible
+
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            this.ctx.lineWidth = 2;
+
+            map.towerSlots.forEach(slot => {
+                if (!slot.occupied) {
+                    // Draw relative to map transform?
+                    // Map.render draws background transformed coordinates?
+                    // No, Map.render uses drawImage with offset/scale.
+                    // So we must transform coordinates manually: (x * scale) + offsetX
+
+                    const sx = (slot.x * map.scale) + map.offsetX;
+                    const sy = (slot.y * map.scale) + map.offsetY;
+                    const r = 30 * map.scale; // Radius scaled
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(sx, sy, r, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                }
+            });
+        }
 
         // Draw Slots if Defender (This requires knowing 'role' - is role in GameState? logic says yes?)
         // GameState logic: lives, gold. Role is "Player State" (Local).
