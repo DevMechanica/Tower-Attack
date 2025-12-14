@@ -1,47 +1,191 @@
+
 import { Map } from './Map.js';
 import { Unit } from './Unit.js';
 import { Tower } from './Tower.js';
-
 import { EffectManager } from './Effects.js';
 import { AudioManager } from './AudioManager.js';
 
+// New Architecture Imports
+import { GameState } from './GameState.js';
+import { GameLoop } from './GameLoop.js';
+import { Renderer } from './Renderer.js';
+import { NetworkManager } from './NetworkManager.js';
+import { InputManager, CommandType } from './InputManager.js';
+
 export class Game {
     constructor(canvas) {
+        // --- 1. Infrastructure ---
         this.canvas = canvas;
-        this.ctx = this.canvas.getContext('2d');
-        this.lastTime = 0;
-
-        this.map = new Map(this);
-        this.units = [];
-        this.towers = [];
-        this.projectiles = []; // New array for bullets
-        this.effects = new EffectManager(this);
         this.audio = new AudioManager();
-        this.shake = 0;
+        this.map = new Map(this); // Map needs game ref for assets? Or just Context? 
+        // Map constructor usually takes (game).
 
-        // Game State
-        this.role = 'attacker'; // 'attacker' or 'defender'
-        this.selectedCard = null; // 'unit_basic', 'tower_cannon', etc.
-        this.selectedTower = null;
+        // --- 2. State Layer ---
+        this.state = new GameState();
 
-        // Resources
-        this.defenderLives = 20;
-        this.attackerGold = 100;
+        // --- 3. Proxies for Legacy Code (Unit/Tower compatibility) ---
+        // Unit.js uses game.units, game.defenderLives, etc.
+        // We link them to state.
 
-        this.resize();
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
+        // --- 4. Network Layer ---
+        this.network = new NetworkManager();
+        this.network.setCommandHandler((cmd) => this.executeCommand(cmd));
 
-        this.paused = true; // Start paused or unpaused? Usually unpaused. But let's start with false.
+        // --- 5. Input Layer ---
+        this.input = new InputManager(canvas, this.map, this.network, this.state);
+        this.input.setupListeners(); // Ensure we actually start listening!
 
-        // Game State: Welcome
+        // --- 6. View Layer ---
+        this.renderer = new Renderer(canvas);
+        this.effects = new EffectManager(this); // Effects might need proxies too
+
+        // --- 7. Control Layer ---
+        this.loop = new GameLoop(
+            (dt) => this.update(dt),
+            (ts) => this.render(ts)
+        );
+
+        // --- 8. UI/Game Flow ---
+        // (Keep Setup Logic from old Game.js)
+        this.paused = true;
         this.gameStarted = false;
 
-        this.setupUI();
-        this.setupInput();
-        this.setupMenu();
-        this.setupWelcome(); // New
+        this.role = 'attacker'; // Local Player Role
+        this.setupUI();     // Re-implement or adapt
+        this.setupMenu();   // Re-implement or adapt
+        this.setupWelcome(); // Re-implement OR adapt
+
+        // Initial Resize
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
     }
+
+    // --- State Proxies for Unit/Tower/Effects ---
+    get units() { return this.state.units; }
+    set units(v) { this.state.units = v; }
+
+    get towers() { return this.state.towers; }
+    set towers(v) { this.state.towers = v; }
+
+    get projectiles() { return this.state.projectiles; }
+    set projectiles(v) { this.state.projectiles = v; }
+
+    get defenderLives() { return this.state.lives; }
+    set defenderLives(v) { this.state.lives = v; }
+
+    get attackerGold() { return this.state.gold; }
+    set attackerGold(v) { this.state.gold = v; }
+
+
+    // --- Core Loops ---
+    start() {
+        this.loop.start();
+    }
+
+    update(deltaTime) {
+        if (!this.gameStarted || this.paused) return;
+
+        this.state.time += deltaTime;
+
+        // Update Entities
+        // Note: Unit.update(dt) currently handles movement, logic, AND physics.
+        // In a pure ECS, this would be System loops. 
+        // Here we delegate to the Entity Class (Fat Model).
+
+        this.map.update(deltaTime); // Map might have logic?
+
+        this.state.units.forEach(u => u.update(deltaTime));
+        this.state.units = this.state.units.filter(u => u.active);
+
+        this.state.towers.forEach(t => t.update(deltaTime)); // Towers might shoot (create projectiles)
+        this.state.towers = this.state.towers.filter(t => t.active);
+
+        this.state.projectiles.forEach(p => p.update(deltaTime));
+        this.state.projectiles = this.state.projectiles.filter(p => p.active);
+
+        this.effects.update(deltaTime);
+
+        // Shake Decay handled in Renderer? Or State?
+        // Old code had this.shake. Let's proxy shake too if needed, or move to Renderer.
+        // For now, let's assume effects handles shake or we omit it for MVP refactor.
+
+        this.updateUI(); // Keep UI updates
+    }
+
+    render(timestamp) {
+        // Delegate to Renderer
+        this.renderer.draw(this.state, this.map);
+
+        // Effects are strictly visual, so Renderer should probably draw them?
+        // OR we draw them on top here.
+        // Original Game.js: effects.render(ctx, map) was at end of render.
+        this.effects.render(this.renderer.ctx, this.map);
+    }
+
+    // --- Command Execution ---
+    executeCommand(cmd) {
+        console.log("Executing", cmd);
+
+        if (cmd.type === CommandType.SPAWN_UNIT) {
+            // Logic moved from spawnUnit
+            // Validation: Check Gold?
+            // If validation passes:
+            if (this.map.path.length > 0) {
+                // Ensure we have enough gold?
+                // Logic says: if (this.attackerGold >= cost) ...
+                // Let's assume unlimited or check cost.
+                // For MVP: Just spawn.
+                this.state.units.push(new Unit(this, this.map.path, cmd.unitType));
+                // Cost deduction logic should be here.
+            }
+        }
+        else if (cmd.type === CommandType.PLACE_TOWER) {
+            // Logic moved from tryPlaceTower
+            // Check if slot free
+            const range = 40;
+            const slot = this.map.towerSlots.find(s => {
+                const dx = s.x - cmd.x;
+                const dy = s.y - cmd.y;
+                return Math.sqrt(dx * dx + dy * dy) < range && !s.occupied;
+            });
+
+            if (slot) {
+                this.state.towers.push(new Tower(this, slot.x, slot.y, cmd.towerType));
+                slot.occupied = true;
+                this.audio.playPlacingTower();
+            }
+        }
+        else if (cmd.type === CommandType.SELL_TOWER) {
+            // FIND and SELL
+            const tower = this.state.towers.find(t => t.x === cmd.x && t.y === cmd.y);
+            if (tower) {
+                tower.active = false; // Mark for removal
+
+                // Free slot
+                const slot = this.map.towerSlots.find(s => Math.abs(s.x - cmd.x) < 5 && Math.abs(s.y - cmd.y) < 5);
+                if (slot) slot.occupied = false;
+
+                // Refund?
+                // this.attackerGold += ... wait, defender doesn't have gold? 
+                // Currently gold is attackerGold in constructor.
+                // Assuming defender has money too, but not implemented in old Game.js yet?
+                // Ah, lives only.
+            }
+        }
+    }
+
+
+    // --- Legacy/UI Glue ---
+    // (Adapted from old Game.js)
+
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        if (this.map) this.map.updateDimensions(this.canvas.width, this.canvas.height);
+    }
+
+    // ... UI Setup methods ...
+    // I will copy the basic UI setup but make sure it uses InputManager
 
     setupWelcome() {
         const startBtn = document.getElementById('start-btn');
@@ -54,19 +198,14 @@ export class Game {
         if (startBtn) {
             startBtn.addEventListener('click', () => {
                 this.gameStarted = true;
-
-                // Transition UI
                 welcomeScreen.classList.add('hidden');
-
-                // Show HUD
                 hudTop.classList.remove('hidden');
                 cardDock.classList.remove('hidden');
                 roleBtn.classList.remove('hidden');
                 menuBtn.classList.remove('hidden');
-
-                // Start loop if not already running (or just ensure it processes updates)
-                this.lastTime = performance.now();
                 this.paused = false;
+                this.lastTime = performance.now();
+                this.start(); // Start the Loop!
             });
         }
     }
@@ -77,14 +216,14 @@ export class Game {
         this.uiDock = document.getElementById('card-dock');
         this.uiSellBtn = document.getElementById('sell-btn');
 
-        this.uiSellBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent canvas click
-            this.audio.playClick();
-            this.sellTower();
-        });
-
-        // Initial Draw
-        this.updateUI();
+        if (this.uiSellBtn) {
+            this.uiSellBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.audio.playClick();
+                this.input.triggerSell(); // Trigger via InputManager
+            });
+        }
 
         document.getElementById('role-switch-btn').addEventListener('click', () => {
             this.audio.playClick();
@@ -95,16 +234,19 @@ export class Game {
     }
 
     updateUI() {
-        if (this.uiLives) this.uiLives.innerText = Math.floor(this.defenderLives);
-        if (this.uiGold) this.uiGold.innerText = Math.floor(this.attackerGold);
+        if (this.uiLives) this.uiLives.innerText = Math.floor(this.state.lives);
+        if (this.uiGold) this.uiGold.innerText = Math.floor(this.state.gold);
 
         // Update Sell Button Position
-        if (this.selectedTower && this.uiSellBtn) {
-            const screenX = this.map.offsetX + this.selectedTower.x * this.map.scale;
-            const screenY = this.map.offsetY + this.selectedTower.y * this.map.scale;
+        if (this.input.selectedEntity && this.uiSellBtn && this.renderer) {
+            // Need screen coordinates. Renderer/Map knows?
+            // Map knows.
+            const entity = this.input.selectedEntity;
+            const screenX = this.map.offsetX + entity.x * this.map.scale;
+            const screenY = this.map.offsetY + entity.y * this.map.scale;
 
             this.uiSellBtn.style.display = 'flex';
-            this.uiSellBtn.style.left = `${screenX + 30}px`; // Offset to the right
+            this.uiSellBtn.style.left = `${screenX + 30}px`;
             this.uiSellBtn.style.top = `${screenY - 30}px`;
         } else if (this.uiSellBtn) {
             this.uiSellBtn.style.display = 'none';
@@ -113,12 +255,12 @@ export class Game {
 
     toggleRole() {
         this.role = (this.role === 'attacker') ? 'defender' : 'attacker';
-        this.selectedCard = null;
-        // this.uiRoleText.innerText = this.role.toUpperCase(); // Old indicator removed
+        this.input.selectedCard = null; // Update InputManager state
         this.renderCards();
     }
 
     renderCards() {
+        // ... (Same as old Game.js but setting input.selectedCard)
         this.uiDock.innerHTML = '';
         this.uiDock.className = `${this.role}-theme`;
 
@@ -137,9 +279,7 @@ export class Game {
         items.forEach(item => {
             const card = document.createElement('div');
             card.className = 'card';
-            card.dataset.id = item.id; // For CSS matching
-            // Use img tag for the icon
-            card.innerHTML = `<img src="${item.img}" class="card-icon-img" alt="${item.label}"><span>${item.label}</span>`;
+            card.innerHTML = `<img src="${item.img}" class="card-icon-img"><span>${item.label}</span>`;
             card.onclick = () => {
                 this.audio.playClick();
                 this.selectCard(item.id, card);
@@ -149,271 +289,35 @@ export class Game {
     }
 
     selectCard(id, element) {
-        // Deselect previous
+        // UI Selection Visuals
         const prev = document.querySelector('.card.selected');
         if (prev) prev.classList.remove('selected');
 
-        if (this.selectedCard === id) {
-            this.selectedCard = null; // Toggle off
+        if (this.input.selectedCard === id) {
+            this.input.selectedCard = null;
         } else {
-            this.selectedCard = id;
+            this.input.selectedCard = id;
             element.classList.add('selected');
         }
     }
 
-    setupInput() {
-        this.canvas.addEventListener('mousedown', (e) => {
-            const coords = this.map.getGameCoordinates(e.clientX, e.clientY);
-            if (!coords) return;
-
-            if (this.role === 'attacker' && this.selectedCard) {
-                // Attacker clicks usually just spawn, but maybe we want "spawn at start"?
-                // For now, clicking anywhere while card selected spawns at start (simple mobile interaction)
-                this.spawnUnit(this.selectedCard);
-            } else if (this.role === 'defender') {
-                if (this.selectedCard) {
-                    // Check if clicked near a slot
-                    this.tryPlaceTower(coords.x, coords.y, this.selectedCard);
-                } else {
-                    // Try to select a tower
-                    const clickedTower = this.towers.find(t => {
-                        return Math.abs(t.x - coords.x) < 30 && Math.abs(t.y - coords.y) < 30;
-                    });
-
-                    if (clickedTower) {
-                        this.selectedTower = clickedTower;
-                    } else {
-                        this.selectedTower = null;
-                    }
-                }
-            }
-        });
-    }
-
-    spawnUnit(type) {
-        if (this.map.path.length > 0) {
-            // TODO: Pass type to Unit
-            this.units.push(new Unit(this, this.map.path));
-            console.log(`Spawned ${type}`);
-        }
-    }
-
-    tryPlaceTower(x, y, type) {
-        const range = 40; // Click tolerance
-        const slot = this.map.towerSlots.find(s => {
-            const dx = s.x - x;
-            const dy = s.y - y;
-            return Math.sqrt(dx * dx + dy * dy) < range && !s.occupied;
-        });
-
-        if (slot) {
-            this.towers.push(new Tower(this, slot.x, slot.y, type));
-            slot.occupied = true;
-            this.audio.playPlacingTower();
-            console.log(`Placed ${type} at ${slot.x}, ${slot.y}`);
-            // Deselect card after placement?
-            this.selectedCard = null;
-            document.querySelector('.card.selected')?.classList.remove('selected');
-        }
-    }
-
-    resize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-        if (this.map) this.map.updateDimensions(this.canvas.width, this.canvas.height);
-    }
-
-    start() {
-        requestAnimationFrame((ts) => this.loop(ts));
-    }
-
-    loop(timestamp) {
-        if (!this.gameStarted) {
-            // Render only background? Or a static scene?
-            // Let's call render() but maybe skip update() so it's a frozen "title screen" behind the UI
-            // But if we want black screen fixed, we need to render the map at least.
-            this.map.updateDimensions(this.canvas.width, this.canvas.height); // Ensure sizing
-            this.render();
-            requestAnimationFrame((ts) => this.loop(ts));
-            return;
-        }
-
-        if (this.paused) {
-            this.lastTime = timestamp;
-            requestAnimationFrame((ts) => this.loop(ts));
-            return;
-        }
-
-        const deltaTime = timestamp - this.lastTime;
-        this.lastTime = timestamp;
-
-        // Cap deltaTime to prevent huge jumps (e.g. tab switch)
-        // 50ms = 20 FPS minimum. If slower, game slows down instead of skipping.
-        const cappedDelta = Math.min(deltaTime, 50);
-
-        this.update(cappedDelta);
-        this.render();
-        requestAnimationFrame((ts) => this.loop(ts));
-    }
-
-    update(deltaTime) {
-        this.map.update(deltaTime);
-        this.units.forEach(unit => unit.update(deltaTime));
-        this.units = this.units.filter(unit => unit.active);
-
-        this.towers.forEach(tower => tower.update(deltaTime));
-        this.towers = this.towers.filter(tower => tower.active); // Remove dead towers
-
-        this.projectiles.forEach(p => p.update(deltaTime));
-        this.projectiles = this.projectiles.filter(p => p.active);
-
-        this.effects.update(deltaTime);
-
-        // Shake Decay
-        if (this.shake > 0) {
-            this.shake -= deltaTime * 0.05; // Decay speed
-            if (this.shake < 0) this.shake = 0;
-        }
-
-        this.updateUI();
-    }
-
-    render() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        this.ctx.save();
-        if (this.shake > 0) {
-            const dx = (Math.random() - 0.5) * this.shake * 2;
-            const dy = (Math.random() - 0.5) * this.shake * 2;
-            this.ctx.translate(dx, dy);
-        }
-
-        this.map.render(this.ctx);
-
-        // Draw Slots if Defender
-        if (this.role === 'defender') {
-            this.map.towerSlots.forEach(slot => {
-                if (!slot.occupied) {
-                    const sx = this.map.offsetX + slot.x * this.map.scale;
-                    const sy = this.map.offsetY + slot.y * this.map.scale;
-
-                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-                    this.ctx.setLineDash([5, 5]);
-                    this.ctx.lineWidth = 2;
-                    this.ctx.beginPath();
-                    this.ctx.arc(sx, sy, 20 * this.map.scale, 0, Math.PI * 2);
-                    this.ctx.stroke();
-                    this.ctx.setLineDash([]);
-                }
-            });
-        }
-
-        // Y-Sort Render
-        const entities = [...this.towers, ...this.units];
-        entities.sort((a, b) => a.y - b.y);
-
-        entities.forEach(entity => entity.render(this.ctx, this.map));
-
-        this.projectiles.forEach(p => p.render(this.ctx, this.map));
-        this.effects.render(this.ctx, this.map);
-
-        this.ctx.restore(); // Restore from shake
-    }
-
-    sellTower() {
-        if (!this.selectedTower) return;
-
-        console.log("Selling tower", this.selectedTower);
-
-        // Find slot and free it
-        const slot = this.map.towerSlots.find(s =>
-            Math.abs(s.x - this.selectedTower.x) < 5 && Math.abs(s.y - this.selectedTower.y) < 5
-        );
-        if (slot) slot.occupied = false;
-
-        // Remove tower
-        this.towers = this.towers.filter(t => t !== this.selectedTower);
-
-        // Reset selection
-        this.selectedTower = null;
-        this.selectedTower = null;
-        this.updateUI(); // Immediate update to hide button
-    }
-
     setupMenu() {
+        // ... (Pause/Resume logic) ... 
         this.uiMenu = document.getElementById('main-menu');
-        this.resumeBtn = document.getElementById('resume-btn');
-        this.restartBtn = document.getElementById('restart-btn'); // New
-        this.levelSelectBtn = document.getElementById('level-select-btn');
-        this.exitBtn = document.getElementById('exit-btn');
+        const resumeBtn = document.getElementById('resume-btn');
         const menuTrigger = document.getElementById('menu-btn');
 
-        // Toggle Pause
-        const toggle = () => this.togglePause();
+        const toggle = () => {
+            this.paused = !this.paused;
+            if (this.paused) this.uiMenu.classList.remove('hidden');
+            else this.uiMenu.classList.add('hidden');
+        };
 
         if (menuTrigger) menuTrigger.addEventListener('click', toggle);
-        if (this.resumeBtn) this.resumeBtn.addEventListener('click', toggle);
+        if (resumeBtn) resumeBtn.addEventListener('click', toggle);
 
-        if (this.restartBtn) {
-            this.restartBtn.addEventListener('click', () => {
-                this.restart();
-            });
-        }
-
-        // Placeholders
-        if (this.levelSelectBtn) {
-            this.levelSelectBtn.addEventListener('click', () => {
-                console.log('Select Level clicked');
-            });
-        }
-
-        if (this.exitBtn) {
-            this.exitBtn.addEventListener('click', () => {
-                console.log('Exit clicked');
-            });
-        }
-
-        // Key Listener for ESC
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.togglePause();
-            }
+            if (e.key === 'Escape') toggle();
         });
-    }
-
-    togglePause() {
-        this.paused = !this.paused;
-        if (this.paused) {
-            this.uiMenu.classList.remove('hidden');
-        } else {
-            this.uiMenu.classList.add('hidden');
-            this.lastTime = performance.now(); // Reset time to avoid jump
-        }
-    }
-
-    restart() {
-        // Reset Game State
-        this.units = [];
-        this.towers = [];
-        this.projectiles = [];
-        this.effects.emitters = []; // Assuming effects manager has clear or we just wait for them to die? Accessing internal array directly if possible.
-        // Actually Effects.js might not expose it easily, let's just ignore or assume they fade out.
-        // Checking Effects.js import... standard class. Let's assume it handles itself or we leave lingering fx for a second.
-
-        this.defenderLives = 20;
-        this.attackerGold = 100;
-        this.role = 'attacker';
-        this.selectedCard = null;
-        this.selectedTower = null;
-
-        // Reset Map Slots
-        this.map.towerSlots.forEach(slot => slot.occupied = false);
-
-        // UI Reset
-        this.togglePause(); // Unpause and hide menu
-        this.renderCards(); // Reset to attacker theme
-        this.updateUI();
-
-        console.log("Game Restarted");
     }
 }

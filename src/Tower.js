@@ -306,4 +306,16 @@ export class Tower {
             ctx.fillRect(screenX - barWidth / 2, barY, barWidth * (this.health / this.maxHealth), barHeight);
         }
     }
+
+    serialize() {
+        return {
+            type: this.type,
+            x: this.x,
+            y: this.y,
+            health: this.health,
+            cooldown: this.cooldown,
+            isAttacking: this.isAttacking,
+            active: this.active
+        };
+    }
 }
