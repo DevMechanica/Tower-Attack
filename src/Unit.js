@@ -198,4 +198,15 @@ export class Unit {
         ctx.fillStyle = '#0f0';
         ctx.fillRect(screenX - barWidth / 2, barY, barWidth * (this.health / this.maxHealth), barHeight);
     }
+
+    serialize() {
+        return {
+            type: this.type,
+            x: this.x,
+            y: this.y,
+            health: this.health,
+            currentPointIndex: this.currentPointIndex,
+            active: this.active
+        };
+    }
 }
