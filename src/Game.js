@@ -1,6 +1,6 @@
 
 import { Map } from './Map.js';
-import { Unit } from './Unit.js';
+import { Unit, UnitFactory } from './Unit.js';
 import { Tower, TowerCosts } from './Tower.js';
 import { EffectManager } from './Effects.js';
 import { AudioManager } from './AudioManager.js';
@@ -242,7 +242,7 @@ export class Game {
                 // Logic says: if (this.attackerGold >= cost) ...
                 // Let's assume unlimited or check cost.
                 // For MVP: Just spawn.
-                this.state.units.push(new Unit(this, this.map.path, cmd.unitType));
+                this.state.units.push(UnitFactory.createUnit(this, this.map.path, cmd.unitType));
                 // Cost deduction logic should be here.
             }
         }
@@ -566,7 +566,8 @@ export class Game {
                 { id: 'unit_tank', label: 'Tank', img: 'assets/units/unit_tank.png', cost: 30 },
                 { id: 'unit_golem', label: 'Golem', img: 'unit_golem.png', cost: 60 },
                 { id: 'unit_mecha_dino', label: 'Dino', img: 'assets/units/mecha_dino/mecha_dino.png', cost: 100 },
-                { id: 'unit_saber_rider', label: 'Rider', img: 'assets/units/saber_rider.png', cost: 50 }
+                { id: 'unit_saber_rider', label: 'Rider', img: 'assets/units/saber_rider.png', cost: 50 },
+                { id: 'unit_crawler', label: 'Crawler', img: 'assets/units/soldier/Main_soldier.png', cost: 15 }
             ]
             : [
                 { id: 'tower_cannon', label: 'Cannon', img: 'assets/towers/Main_tower.png', cost: TowerCosts['tower_cannon'] },
