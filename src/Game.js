@@ -47,6 +47,14 @@ export class Game {
             }
         };
 
+        this.network.onPeerDiscovered = () => {
+            console.log("[Game] Peer Discovered attempting to sync state...");
+            if (this.localReady) {
+                console.log("[Game] Re-broadcasting READY state to new peer.");
+                this.network.sendCommand({ type: CommandType.READY });
+            }
+        };
+
         // Start Connection Logic NOW, after listeners are ready
         this.network.connect();
 

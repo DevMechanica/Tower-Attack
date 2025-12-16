@@ -3,6 +3,7 @@ export class NetworkManager {
     constructor() {
         this.onCommand = null;
         this.onRoleAssigned = null;
+        this.onPeerDiscovered = null;
         this.clientId = 'player_' + Math.floor(Math.random() * 10000);
         this.isHost = false;
         this.role = undefined;
@@ -19,10 +20,14 @@ export class NetworkManager {
                 if (this.isHost) {
                     // I am the host, tell them!
                     this.channel.postMessage({ type: 'DISCOVERY_RESPONSE', hostId: this.clientId });
+                    // Notify Game that someone connected
+                    if (this.onPeerDiscovered) this.onPeerDiscovered();
                 }
             } else if (command.type === 'DISCOVERY_RESPONSE') {
                 // Someone else is host, so I am Client!
                 this.handleRoleAssignment(false); // Client
+                // Notify Game that we found a host
+                if (this.onPeerDiscovered) this.onPeerDiscovered();
             } else {
                 // Game Command
                 if (this.onCommand) {
