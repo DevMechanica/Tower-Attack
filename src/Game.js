@@ -1,7 +1,7 @@
 
 import { Map } from './Map.js';
 import { Unit } from './Unit.js';
-import { Tower } from './Tower.js';
+import { Tower, TowerCosts } from './Tower.js';
 import { EffectManager } from './Effects.js';
 import { AudioManager } from './AudioManager.js';
 
@@ -11,6 +11,10 @@ import { GameLoop } from './GameLoop.js';
 import { Renderer } from './Renderer.js';
 import { NetworkManager } from './NetworkManager.js';
 import { InputManager, CommandType } from './InputManager.js';
+import { Level1Config } from './levels/Level1.js';
+import { MasterLevelConfig } from './levels/MasterLevel.js';
+import { PresetLevelConfig } from './levels/PresetLevel.js';
+import { AIDefender } from './ai/AIDefender.js';
 
 export class Game {
     constructor(canvas) {
@@ -33,6 +37,12 @@ export class Game {
 
         // Listen for Role Assignment
         this.network.onRoleAssigned = (role) => {
+            // CAMPAIGN OVERRIDE: Ignore network roles in campaign mode
+            if (this.gamemode === 'campaign') {
+                console.log(`[Game] Network assigned ${role}, but ignoring for Campaign Mode.`);
+                return;
+            }
+
             console.log(`[Game] Role Assigned: ${role.toUpperCase()}`);
             this.role = role;
             this.renderCards();
@@ -66,13 +76,17 @@ export class Game {
 
         // --- 8. UI/Game Flow ---
         // (Keep Setup Logic from old Game.js)
+        // (Keep Setup Logic from old Game.js)
         this.paused = true;
         this.gameStarted = false;
 
-        this.role = 'attacker'; // Local Player Role
-        this.setupUI();     // Re-implement or adapt
-        this.setupMenu();   // Re-implement or adapt
-        this.setupWelcome(); // Re-implement OR adapt
+        // Mode State
+        this.gamemode = null;
+        this.config = null;
+
+        this.setupUI();
+        this.setupMenu();
+        this.setupWelcome();
 
         // Initial Resize
         this.resize();
@@ -145,7 +159,49 @@ export class Game {
         // For now, let's assume effects handles shake or we omit it for MVP refactor.
 
         this.updateUI(); // Keep UI updates
+
+        // Campaign Logic
+        if (this.gamemode === 'campaign' && this.gameStarted) {
+            if (this.ai) this.ai.update(deltaTime);
+
+            // Win Condition: Destroy all towers
+            // Check if towers exist first to avoid instant win at 0s
+            // We can check if AI has placed AT LEAST one tower ever, or just wait a few seconds.
+            // Better: Check if AIDefender is active and towers.length == 0 AND lives > 0?
+            // Actually config says: "Wins if all defender towers are destroyed"
+
+            if (this.enemyBase) {
+                // Sync UI Lives to Base Health
+                this.defenderLives = Math.max(0, this.enemyBase.health / 100); // Scale 2000 -> 20 for UI? Or just show raw? 
+                // Let's show raw percentage or simplified.
+                // Actually UI expects a small number (20). 2000 is too big.
+                // Let's map 2000 -> 20.
+                this.state.lives = (this.enemyBase.health / this.enemyBase.maxHealth) * 20;
+
+                if (!this.enemyBase.active) {
+                    this.endGame(true, "VICTORY! The Enemy Base is Destroyed!");
+                }
+            } else if (this.state.time > 3000 && this.state.towers.length === 0) {
+                // Fallback if no base exists (legacy/other levels)
+                this.endGame(true, "VICTORY! All towers destroyed.");
+            }
+
+            // Loss Condition: Run out of gold and units
+            // And can't afford cheapest unit
+            if (this.state.units.length === 0 && this.attackerGold < 10) { // Assuming 10 is cheapest unit or similar
+                this.endGame(false, "DEFEAT! Out of resources.");
+            }
+        }
     }
+
+    endGame(victory, message) {
+        alert(message); // Simple placeholder
+        this.paused = true;
+        this.gameStarted = false;
+        location.reload(); // Simple restart
+    }
+
+
 
     render(timestamp) {
         // Delegate to Renderer
@@ -253,6 +309,164 @@ export class Game {
         this.start(); // Start the Loop!
     }
 
+    // Override setupWelcome for Campaign
+    setupWelcome() {
+        const campaignBtn = document.getElementById('campaign-btn');
+        const multiplayerBtn = document.getElementById('multiplayer-btn');
+        const statusText = document.querySelector('#welcome-content p') || document.querySelector('#welcome-screen p');
+
+        // Campaign Handler
+        if (campaignBtn) {
+            campaignBtn.addEventListener('click', () => {
+                this.showLevelSelect();
+            });
+        }
+
+        this.setupLevelSelect();
+
+        // Multiplayer Handler
+        if (multiplayerBtn) {
+            multiplayerBtn.addEventListener('click', () => {
+                this.initMultiplayer(multiplayerBtn, statusText);
+            });
+        }
+    }
+
+    setupLevelSelect() {
+        this.availableLevels = [
+            { id: 'level1', config: Level1Config, label: "Level 1 (Basic)" },
+            { id: 'presets', config: PresetLevelConfig, label: "Static Defense (Puzzle)" },
+            { id: 'master', config: MasterLevelConfig, label: "Master Level (Sandbox)" }
+        ];
+
+        const listContainer = document.getElementById('level-list');
+        const backBtn = document.getElementById('level-back-btn');
+        const levelScreen = document.getElementById('level-select-screen');
+        const welcomeScreen = document.getElementById('welcome-screen');
+
+        if (listContainer) {
+            listContainer.innerHTML = '';
+            this.availableLevels.forEach(lvl => {
+                const btn = document.createElement('button');
+                btn.className = 'primary-btn';
+                btn.innerText = lvl.label;
+                btn.style.width = '100%';
+                btn.style.marginBottom = '10px';
+                btn.onclick = () => {
+                    levelScreen.classList.add('hidden');
+                    this.initCampaign(lvl.config);
+                };
+                listContainer.appendChild(btn);
+            });
+        }
+
+        if (backBtn) {
+            backBtn.onclick = () => {
+                levelScreen.classList.add('hidden');
+                welcomeScreen.classList.remove('hidden');
+            };
+        }
+    }
+
+    showLevelSelect() {
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const levelScreen = document.getElementById('level-select-screen');
+        if (welcomeScreen) welcomeScreen.classList.add('hidden');
+        if (levelScreen) levelScreen.classList.remove('hidden');
+    }
+
+
+    initCampaign(selectedConfig) {
+        this.gamemode = 'campaign';
+
+        // --- LEVEL SELECTION ---
+        // Use passed config
+        this.config = selectedConfig || MasterLevelConfig;
+
+        this.role = 'attacker';
+
+        // Initialize AI only if strategy is defined
+        if (this.config.aiStrategy) {
+            this.ai = new AIDefender(this, this.config);
+        } else {
+            console.log("[Game] AI Disabled for this level.");
+            this.ai = null;
+        }
+
+        // Spawn Preset Towers
+        if (this.config.presetTowers) {
+            this.config.presetTowers.forEach(t => {
+                // Determine slot or just place?
+                // Snap to known slots if possible, or just exact coords
+                // We'll trust config coords for now.
+                const tower = new Tower(this, t.x, t.y, t.type);
+                this.state.towers.push(tower);
+
+                // Mark slot as occupied if it matches
+                const slot = this.map.towerSlots.find(s => Math.abs(s.x - t.x) < 20 && Math.abs(s.y - t.y) < 20);
+                if (slot) slot.occupied = true;
+            });
+        }
+
+        // Set Resources
+        this.attackerGold = this.config.startGoldAttacker;
+        this.defenderLives = 20; // Used as fallback or visual? With Base, this might be redundant or linked.
+        this.defenderGold = this.config.startGoldDefender;
+
+        // SPAWN ENEMY BASE (Castle)
+        const pathEnd = this.map.path[this.map.path.length - 1];
+        if (pathEnd) {
+            this.enemyBase = new Tower(this, pathEnd.x, pathEnd.y, 'base_castle');
+            this.state.towers.push(this.enemyBase);
+        }
+
+        // UI Labels
+        const p1Label = document.querySelector('.player-panel.defender .bar-label');
+        const p2Label = document.querySelector('.player-panel.attacker .bar-label');
+        if (p1Label) p1Label.innerText = "ENEMY BASE (RED)";
+        if (p2Label) p2Label.innerText = "YOU (BLUE)";
+
+        // Start
+        this.renderCards(); // Refresh UI for Attacker Role
+        this.startGameplay();
+    }
+
+    initMultiplayer(btnElement, statusElement) {
+        this.gamemode = 'multiplayer';
+        this.config = null;
+        this.ai = null;
+
+        // Default Multiplayer Resources
+        this.attackerGold = 100;
+        this.defenderLives = 20;
+
+        // UI Labels Reset
+        const p1Label = document.querySelector('.player-panel.defender .bar-label');
+        const p2Label = document.querySelector('.player-panel.attacker .bar-label');
+        if (p1Label) p1Label.innerText = "P1 DEFENDER (RED)";
+        if (p2Label) p2Label.innerText = "P2 ATTACKER (BLUE)";
+
+        // Lobby Logic
+        if (this.localReady) return;
+
+        this.localReady = true;
+        btnElement.innerText = "WAITING...";
+        btnElement.disabled = true;
+        btnElement.style.opacity = "0.5";
+
+        // Hide/Disable other button
+        const campaignBtn = document.getElementById('campaign-btn');
+        if (campaignBtn) campaignBtn.style.display = 'none';
+
+        if (statusElement) statusElement.innerText = "Waiting for other player...";
+
+        // Broadcast Ready
+        this.network.sendCommand({ type: CommandType.READY });
+
+        // Check if we are second to join (opponent already ready)
+        this.checkStartCondition();
+    }
+
 
     // --- Legacy/UI Glue ---
     // (Adapted from old Game.js)
@@ -266,38 +480,12 @@ export class Game {
     // ... UI Setup methods ...
     // I will copy the basic UI setup but make sure it uses InputManager
 
-    setupWelcome() {
-        const startBtn = document.getElementById('start-btn');
-        const statusText = document.querySelector('#welcome-content p') || document.querySelector('#welcome-screen p');
-
-        this.localReady = false;
-        this.remoteReady = false;
-
-        if (startBtn) {
-            startBtn.innerText = "READY?";
-
-            startBtn.addEventListener('click', () => {
-                if (this.localReady) return; // Already clicked
-
-                this.localReady = true;
-                startBtn.innerText = "WAITING...";
-                startBtn.disabled = true;
-                startBtn.style.opacity = "0.5";
-
-                if (statusText) statusText.innerText = "Waiting for other player...";
-
-                // Broadcast Ready
-                this.network.sendCommand({ type: CommandType.READY });
-
-                // Check if we are second to join (opponent already ready)
-                this.checkStartCondition();
-            });
-        }
-    }
-
     setupUI() {
-        this.uiLives = document.getElementById('defender-lives');
+        this.uiDefenderGold = document.getElementById('defender-gold');
+        this.uiDefenderGoldBar = document.querySelector('.player-panel.defender .health-bar .fill'); // Cache Bar
+
         this.uiGold = document.getElementById('attacker-gold');
+        this.uiGoldBar = document.querySelector('.player-panel.attacker .resource-bar .fill'); // Cache Bar
         this.uiDock = document.getElementById('card-dock');
         this.uiSellBtn = document.getElementById('sell-btn');
 
@@ -311,14 +499,34 @@ export class Game {
         }
 
         // Manual Role Switch REMOVED - Handled by Network
-        // document.getElementById('role-switch-btn').addEventListener('click', ...
+        // But for Campaign we want to Ensure it's hidden or disabled
+        if (this.gamemode === 'campaign') {
+            const roleBtn = document.getElementById('role-switch-btn');
+            if (roleBtn) roleBtn.style.display = 'none';
+        }
 
         this.renderCards();
     }
 
     updateUI() {
-        if (this.uiLives) this.uiLives.innerText = Math.floor(this.state.lives);
-        if (this.uiGold) this.uiGold.innerText = Math.floor(this.state.gold);
+        // if (this.uiLives) this.uiLives.innerText = Math.floor(this.state.lives); // Deprecated for Campaign
+        if (this.gamemode === 'campaign') {
+            // Defender Gold
+            if (this.uiDefenderGold) this.uiDefenderGold.innerText = Math.floor(this.defenderGold);
+            if (this.uiDefenderGoldBar && this.config) {
+                const pct = Math.max(0, (this.defenderGold / this.config.startGoldDefender) * 100);
+                this.uiDefenderGoldBar.style.width = `${pct}%`;
+            }
+
+            // Attacker Gold UI logic
+            if (this.uiGold) this.uiGold.innerText = Math.floor(this.attackerGold);
+            if (this.uiGoldBar && this.config) {
+                const pct = Math.max(0, (this.attackerGold / this.config.startGoldAttacker) * 100);
+                this.uiGoldBar.style.width = `${pct}%`;
+            }
+        } else {
+            if (this.uiGold) this.uiGold.innerText = Math.floor(this.state.gold);
+        }
 
         // Update Sell Button Position
         if (this.input.selectedEntity && this.uiSellBtn && this.renderer) {
@@ -354,22 +562,62 @@ export class Game {
 
         const items = (this.role === 'attacker')
             ? [
-                { id: 'unit_basic', label: 'Grunt', img: 'assets/units/soldier/Main_soldier.png' },
-                { id: 'unit_tank', label: 'Tank', img: 'assets/units/unit_tank.png' },
-                { id: 'unit_golem', label: 'Golem', img: 'unit_golem.png' }
+                { id: 'unit_basic', label: 'Grunt', img: 'assets/units/soldier/Main_soldier.png', cost: 10 },
+                { id: 'unit_tank', label: 'Tank', img: 'assets/units/unit_tank.png', cost: 30 },
+                { id: 'unit_golem', label: 'Golem', img: 'unit_golem.png', cost: 60 },
+                { id: 'unit_mecha_dino', label: 'Dino', img: 'assets/units/mecha_dino/mecha_dino.png', cost: 100 },
+                { id: 'unit_saber_rider', label: 'Rider', img: 'assets/units/saber_rider.png', cost: 50 }
             ]
             : [
-                { id: 'tower_cannon', label: 'Cannon', img: 'assets/towers/Main_tower.png' },
-                { id: 'tower_mage', label: 'Mage', img: 'assets/towers/tower_mage.png' },
-                { id: 'tower_tesla', label: 'Tesla', img: 'tower_tesla.png' }
+                { id: 'tower_cannon', label: 'Cannon', img: 'assets/towers/Main_tower.png', cost: TowerCosts['tower_cannon'] },
+                { id: 'tower_mage', label: 'Mage', img: 'assets/towers/tower_mage.png', cost: TowerCosts['tower_mage'] },
+                { id: 'tower_tesla', label: 'Tesla', img: 'tower_tesla.png', cost: TowerCosts['tower_tesla'] }
             ];
 
-        items.forEach(item => {
+        // Filter for Campaign
+        const filteredItems = (this.gamemode === 'campaign')
+            ? items.filter(i => {
+                if (this.role === 'attacker') return this.config.allowedUnits.includes(i.id);
+                return this.config.allowedTowers.includes(i.id);
+            })
+            : items;
+
+        filteredItems.forEach(item => {
             const card = document.createElement('div');
             card.className = 'card';
-            card.innerHTML = `<img src="${item.img}" class="card-icon-img"><span>${item.label}</span>`;
+            // Show Cost in Label
+            card.innerHTML = `<img src="${item.img}" class="card-icon-img"><span>${item.label} (${item.cost})</span>`;
+
             card.onclick = () => {
                 this.audio.playClick();
+
+                // INSTANT SPAWN for Attacker (Units)
+                if (this.role === 'attacker' && item.id.startsWith('unit')) {
+                    // Cost Check
+                    if (this.attackerGold < item.cost) {
+                        // Visual feedback for too expensive
+                        card.style.borderColor = "red";
+                        setTimeout(() => card.style.borderColor = "", 200);
+                        return;
+                    }
+
+                    const cmd = {
+                        type: CommandType.SPAWN_UNIT,
+                        unitType: item.id
+                    };
+                    this.network.sendCommand(cmd);
+
+                    // Deduct Gold
+                    this.attackerGold -= item.cost;
+                    this.updateUI();
+
+                    // Visual feedback (Success)
+                    card.style.transform = "scale(0.9)";
+                    setTimeout(() => card.style.transform = "", 100);
+                    return;
+                }
+
+                // Default Select Logic (Defender/Towers)
                 this.selectCard(item.id, card);
             };
             this.uiDock.appendChild(card);

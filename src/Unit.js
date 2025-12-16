@@ -12,9 +12,10 @@ export class Unit {
             this.x = this.path[0].x;
             this.y = this.path[0].y;
         } else {
-            this.x = 0;
             this.y = 0;
         }
+
+        this.state = 'MOVING'; // MOVING, ATTACKING
 
         // Stats
         this.speed = 100;
@@ -31,7 +32,18 @@ export class Unit {
             this.health = 800; // Tanky
             this.maxHealth = 800;
             this.speed = 40; // Slow
+            this.speed = 40; // Slow
             this.radius = 25;
+        } else if (this.type === 'unit_mecha_dino') {
+            this.health = 400;
+            this.maxHealth = 400;
+            this.speed = 70;
+            this.radius = 30;
+        } else if (this.type === 'unit_saber_rider') {
+            this.health = 250;
+            this.maxHealth = 250;
+            this.speed = 120; // Fast
+            this.radius = 20;
         }
 
         this.active = true;
@@ -75,54 +87,64 @@ export class Unit {
             if (this.attackAnim < 0) this.attackAnim = 0;
         }
 
-        // Try to shoot nearby towers
-        if (this.cooldown <= 0) {
-            let target = null;
-            let minDist = Infinity;
+        // 1. Target Acquisition & State Check
+        let target = null;
+        let minDist = Infinity;
 
-            this.game.towers.forEach(tower => {
-                if (!tower.active) return;
-                const dist = Math.sqrt((tower.x - this.x) ** 2 + (tower.y - this.y) ** 2);
-                if (dist < this.range && dist < minDist) {
-                    minDist = dist;
-                    target = tower;
-                }
-            });
+        // Simplify finding closest tower
+        this.game.towers.forEach(tower => {
+            if (!tower.active) return;
+            const dist = Math.sqrt((tower.x - this.x) ** 2 + (tower.y - this.y) ** 2);
+            if (dist < this.range && dist < minDist) {
+                minDist = dist;
+                target = tower;
+            }
+        });
 
-            if (target) {
+        // State Machine
+        if (target) {
+            // Target found within range -> Stop and Attack
+            this.state = 'ATTACKING';
+
+            if (this.cooldown <= 0) {
                 // Shoot!
                 this.game.projectiles.push(new Projectile(this.game, this.x, this.y, target, 'bullet'));
                 this.cooldown = this.maxCooldown;
                 this.attackAnim = 0.3;
             }
-        }
-
-        // Movement (Only move if path exists)
-        if (this.path.length === 0) return;
-
-        // Target next waypoint
-        let target = this.path[this.currentPointIndex + 1];
-
-        if (!target) {
-            // Reached the end
-            this.active = false;
-            // Damage defender
-            this.game.defenderLives -= 1;
-            return;
-        }
-
-        // Move towards target
-        const dx = target.x - this.x;
-        const dy = target.y - this.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance < 5) {
-            this.currentPointIndex++;
         } else {
-            const moveX = (dx / distance) * this.speed * (deltaTime / 1000);
-            const moveY = (dy / distance) * this.speed * (deltaTime / 1000);
-            this.x += moveX;
-            this.y += moveY;
+            // No target -> Move
+            this.state = 'MOVING';
+        }
+
+        // 2. Movement (Only if MOVING)
+        if (this.state === 'MOVING') {
+            if (this.path.length === 0) return;
+
+            // Target next waypoint
+            let waypoint = this.path[this.currentPointIndex + 1];
+
+            if (!waypoint) {
+                // Reached the end
+                this.active = false;
+                // Damage defender
+                this.game.defenderLives -= 1;
+                return;
+            }
+
+            // Move towards target
+            const dx = waypoint.x - this.x;
+            const dy = waypoint.y - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < 5) {
+                this.currentPointIndex++;
+            } else {
+                const moveX = (dx / distance) * this.speed * (deltaTime / 1000);
+                const moveY = (dy / distance) * this.speed * (deltaTime / 1000);
+                this.x += moveX;
+                this.y += moveY;
+            }
         }
     }
 
@@ -153,6 +175,10 @@ export class Unit {
             assetName = 'unit_tank';
         } else if (this.type === 'unit_golem') {
             assetName = 'unit_golem';
+        } else if (this.type === 'unit_mecha_dino') {
+            assetName = 'unit_mecha_dino';
+        } else if (this.type === 'unit_saber_rider') {
+            assetName = 'unit_saber_rider';
         } else {
             assetName = 'Main_unit';
         }
