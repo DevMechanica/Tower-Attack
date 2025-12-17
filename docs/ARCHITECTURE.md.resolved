@@ -1,74 +1,75 @@
-# Game Engine Architecture
+# Tower Attack: Architecture Deep Dive
 
-This document explains the technical design of the game engine. We have moved away from a monolithic "God Class" to a modular **MVC (Model-View-Controller)** architecture designed for multiplayer.
+This document outlines the technical design of the Tower Attack game. It explains how the pieces fit together, from the server-side matchmaking to the client-side game loop.
 
-## 1. High-Level Data Flow
+## 1. High-Level Architecture
+The game follows a **Client-Server** architecture (for Online Mode) and a **Peer-to-Peer** simulation (for Local Mode).
 
-The game follows a strict **unidirectional data flow**, similar to Redux or Flux:
-
-```mermaid
-graph LR
-    User[User Input] --> Input[InputManager]
-    Input --> Command[Command Object]
-    Command --> Network[NetworkManager]
-    Network --> Game[Game Controller]
-    Game --> State[GameState]
-    State --> Renderer[Renderer]
-    GameLoop[GameLoop] --> Game
-```
-
-1.  **Input:** User clicks/keys are captured.
-2.  **Command:** Inputs are converted into serializable **Commands** (e.g., `{ type: 'SPAWN_UNIT', x: 10, y: 20 }`).
-3.  **Network:** Commands are broadcast to all players (currently via `BroadcastChannel` for local tabs).
-4.  **Game:** The [Game](file:///d:/WORK/PurviProekt/src/Game.js#15-324) class receives commands and updates the [GameState](file:///d:/WORK/PurviProekt/src/GameState.js#2-44).
-5.  **State:** The [GameState](file:///d:/WORK/PurviProekt/src/GameState.js#2-44) holds all data (units, health, gold). It contains **NO** logic.
-6.  **Render:** The [Renderer](file:///d:/WORK/PurviProekt/src/Renderer.js#2-104) reads [GameState](file:///d:/WORK/PurviProekt/src/GameState.js#2-44) 60 times a second and draws it.
+*   **Frontend**: Vanilla JavaScript (ES Modules). No heavy frameworks (React/Vue) were used for the game loop to ensure maximum performance and control.
+*   **Backend**: Node.js with socket.io for robust real-time communication.
+*   **Infrastructure**: Google App Engine (Standard Environment).
 
 ---
 
-## 2. Core Components
+## 2. Core Components (Client)
 
-### [src/GameState.js](file:///d:/WORK/PurviProekt/src/GameState.js) (The Model)
-*   **Purpose:** The "Single Source of Truth".
-*   **Contents:** Lists of units, towers, projectiles, players' gold/lives.
-*   **Key Feature:** It is **Serializable**. Calling [serialize()](file:///d:/WORK/PurviProekt/src/GameState.js#20-31) gives you a pure JSON object representing the entire world. This is essential for:
-    *   Saving/Loading games.
-    *   Sending the game state to a new player joining a match.
-    *   Debug replays.
+### A. The Engine ([Game.js](file:///d:/WORK/PurviProekt/src/Game.js))
+This is the central hub. It initializes all other systems and ties them together.
+*   **Responsibilities**:
+    *   Holds the "Truth" (Units, Towers, Gold, Lives).
+    *   Manages the main Game Loop (`requestAnimationFrame`).
+    *   Routes inputs to logic and logic to the renderer.
 
-### [src/GameLoop.js](file:///d:/WORK/PurviProekt/src/GameLoop.js) (The Clock)
-*   **Purpose:** separation of **Simulation Time** vs **Real Time**.
-*   **Mechanism:** Runs the game logic at a fixed **20 Ticks/Second**.
-*   **Why?** In multiplayer, if one player has a 144Hz monitor and another has 60Hz, a frame-based loop would make the 144Hz player move faster. [GameLoop](file:///d:/WORK/PurviProekt/src/GameLoop.js#2-56) ensures both run at exactly the same speed.
+### B. Network Layer ([NetworkManager.js](file:///d:/WORK/PurviProekt/src/NetworkManager.js))
+This is the "Brain" of the multiplayer system. It abstracts away *how* we are sending messages so the rest of the game doesn't care if we are online or offline.
+*   **Automatic Mode Switching**: Detects if you are on `localhost` or the `cloud` URL.
+*   **Transports**:
+    *   **SocketTransport**: Uses `socket.io` for Online play. Robust against firewalls and proxies.
+    *   **LocalTransport**: Uses `BroadcastChannel` for tab-to-tab communication (Zero latency, no server needed).
 
-### [src/Renderer.js](file:///d:/WORK/PurviProekt/src/Renderer.js) (The View)
-*   **Purpose:** Visuals only.
-*   **Behavior:** It takes the [GameState](file:///d:/WORK/PurviProekt/src/GameState.js#2-44) and paints it. It does not calculate collisions or move units.
-*   **Independence:** You could swap this for a 3D renderer (Three.js) without changing a single line of game logic.
+### C. Input Handling ([InputManager.js](file:///d:/WORK/PurviProekt/src/InputManager.js))
+Listens for user clicks and taps.
+*   **Command Pattern**: It does *not* modify the game state directly. Instead, it generates **Commands** (e.g., `PLACE_TOWER`, `SPAWN_UNIT`).
+*   **Deterministic Execution**: These commands are sent to the network. The game only updates when it *receives* the command back (or processes it locally), ensuring both players see the exact same thing.
 
-### [src/NetworkManager.js](file:///d:/WORK/PurviProekt/src/NetworkManager.js) (The Connector)
-*   **Purpose:** Abstraction of the network layer.
-*   **Current Mode:** uses `BroadcastChannel` to talk between browser tabs.
-*   **Future Mode:** Can be swapped to use `socket.io` or `WebSockets` to talk to a Node.js server. The rest of the game won't know the difference.
-
-### [src/Game.js](file:///d:/WORK/PurviProekt/src/Game.js) (The Controller)
-*   **Purpose:** The conductor.
-*   **Responsibility:**
-    *   Initializes all other systems.
-    *   Receives Commands from [NetworkManager](file:///d:/WORK/PurviProekt/src/NetworkManager.js#2-39).
-    *   Executes logic (e.g., "If SPAWN command received -> Deduct Gold -> Add Unit to State").
-    *   Triggers the Loop.
+### D. Rendering (`Renderer.js` + `Effects.js`)
+Purely visual. Reads the state and draws it to the HTML5 Canvas.
+*   **Separation of Concerns**: The Renderer doesn't know rules (e.g., "towers cost gold"). It just knows "Draw a tower at X,Y".
 
 ---
 
-## 3. How to Add Features
+## 3. Server Architecture ([server.js](file:///d:/WORK/PurviProekt/server.js))
 
-**Example: Adding a new "Freeze Spell"**
+The server is lightweight and stateless regarding game rules. It is a **Relay Server**.
 
-1.  **Command:** Add `FREEZE_SPELL` to `CommandType` in [InputManager.js](file:///d:/WORK/PurviProekt/src/InputManager.js).
-2.  **Input:** In [InputManager](file:///d:/WORK/PurviProekt/src/InputManager.js#8-97), listen for the key press (e.g., 'F') and emit a `{ type: 'FREEZE_SPELL' }` command.
-3.  **Logic:** In [Game.js](file:///d:/WORK/PurviProekt/src/Game.js) inside [executeCommand()](file:///d:/WORK/PurviProekt/src/Game.js#125-176), handle `FREEZE_SPELL`:
-    *   Iterate `this.state.units` and set their `frozen` flag to true.
-4.  **View:** In [Renderer.js](file:///d:/WORK/PurviProekt/src/Renderer.js), check `unit.frozen`. If true, draw a blue tint over the unit.
+*   **Technology**: Node.js + Express + Socket.IO.
+*   **Matchmaking**:
+    *   Players join a `waitingPlayers` queue.
+    *   When 2 players are in queue, they are paired (`socket.partner = otherSocket`).
+    *   The server assigns roles: Player 1 = Defender, Player 2 = Attacker.
+*   **Message Relaying**:
+    *   The sever blindly forwards messages. If Attacker sends "Spawn Unit", server passes it to Defender.
+    *   The server does *not* simulate the game. This reduces server load to near zero.
 
-You never mix these steps. The Renderer never listens for the 'F' key directly!
+---
+
+## 4. Data Flow (The "Lifecycle of a Click")
+
+1.  **Input**: User clicks "Spawn Unit".
+2.  **Validation**: [InputManager](file:///d:/WORK/PurviProekt/src/InputManager.js#9-101) checks context (Are you the Attacker? Do you have gold?).
+3.  **Command**: A `SPAWN_UNIT` command object is created.
+4.  **Network**:
+    *   **Online**: Sent via WebSocket to Server -> Server relays -> Received by Opponent.
+    *   **Local**: Sent via BroadcastChannel -> Received by other Tab.
+5.  **Execution**: [Game.js](file:///d:/WORK/PurviProekt/src/Game.js) executes [executeCommand()](file:///d:/WORK/PurviProekt/src/Game.js#186-253).
+6.  **Update**: Unit is added to `this.units`.
+7.  **Render**: `Renderer.js` draws the new unit on the next frame.
+
+---
+
+## 5. Key Design Decisions
+
+*   **Socket.IO over Native WebSockets**:
+    *   *Why?* Google Cloud Load Balancers aggressively strip non-standard headers. Native WebSockets often failed connection handshakes. Socket.IO starts with HTTP Long-Polling (which always works) and upgrades seamlessly, ensuring 100% connectivity.
+*   **BroadcastChannel for Local**:
+    *   *Why?* Allows disconnected development. You can code on a train with no internet and still test multiplayer logic between two tabs.

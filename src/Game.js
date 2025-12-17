@@ -47,6 +47,24 @@ export class Game {
             this.role = role;
             this.renderCards();
 
+            // WE ARE CONNECTED!
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) {
+                if (this.localReady) {
+                    // We clicked ready BEFORE matching. Re-send it now!
+                    console.log("[Game] Matched after Ready. Resending READY.");
+                    this.network.sendCommand({ type: CommandType.READY });
+                    startBtn.innerText = "WAITING FOR OPPONENT...";
+                } else {
+                    // Enable button
+                    startBtn.innerText = "START GAME";
+                    startBtn.disabled = false;
+                    startBtn.style.opacity = "1";
+                    startBtn.style.cursor = "pointer";
+                    // Play sound?
+                }
+            }
+
             // Visual Indicator
             const roleBtn = document.getElementById('role-switch-btn');
             if (roleBtn) {
@@ -54,6 +72,14 @@ export class Game {
                 roleBtn.disabled = true; // Lock it
                 roleBtn.style.opacity = "0.7";
                 roleBtn.style.cursor = "default";
+            }
+        };
+
+        this.network.onStatusChange = (status) => {
+            const statusParams = document.querySelector('#welcome-screen p');
+            if (statusParams) {
+                statusParams.innerText = status;
+                statusParams.style.color = "#ffff00";
             }
         };
 
@@ -83,7 +109,6 @@ export class Game {
         );
 
         // --- 8. UI/Game Flow ---
-        // (Keep Setup Logic from old Game.js)
         // (Keep Setup Logic from old Game.js)
         this.paused = true;
         this.gameStarted = false;
@@ -392,27 +417,39 @@ export class Game {
         const levelScreen = document.getElementById('level-select-screen');
         const welcomeScreen = document.getElementById('welcome-screen');
 
-        if (listContainer) {
-            listContainer.innerHTML = '';
-            this.availableLevels.forEach(lvl => {
-                const btn = document.createElement('button');
-                btn.className = 'primary-btn';
-                btn.innerText = lvl.label;
-                btn.style.width = '100%';
-                btn.style.marginBottom = '10px';
-                btn.onclick = () => {
-                    levelScreen.classList.add('hidden');
-                    this.initCampaign(lvl.config);
-                };
-                listContainer.appendChild(btn);
-            });
-        }
+        this.localReady = false;
+        this.remoteReady = false;
+        this.isConnected = false;
 
-        if (backBtn) {
-            backBtn.onclick = () => {
-                levelScreen.classList.add('hidden');
-                welcomeScreen.classList.remove('hidden');
-            };
+        // Visual State: Disable Play until matched
+        const startBtn = document.getElementById('start-btn');
+        if (startBtn) {
+            startBtn.innerText = "CONNECTING...";
+            startBtn.disabled = true;
+            startBtn.style.opacity = "0.5";
+            startBtn.style.cursor = "not-allowed";
+            if (listContainer) {
+                listContainer.innerHTML = '';
+                this.availableLevels.forEach(lvl => {
+                    const btn = document.createElement('button');
+                    btn.className = 'primary-btn';
+                    btn.innerText = lvl.label;
+                    btn.style.width = '100%';
+                    btn.style.marginBottom = '10px';
+                    btn.onclick = () => {
+                        levelScreen.classList.add('hidden');
+                        this.initCampaign(lvl.config);
+                    };
+                    listContainer.appendChild(btn);
+                });
+            }
+
+            if (backBtn) {
+                backBtn.onclick = () => {
+                    levelScreen.classList.add('hidden');
+                    welcomeScreen.classList.remove('hidden');
+                };
+            }
         }
     }
 
@@ -427,6 +464,16 @@ export class Game {
     initCampaign(selectedConfig) {
         this.gamemode = 'campaign';
 
+        const statusText = document.querySelector('#welcome-screen p');
+        if (statusText) statusText.innerText = "Waiting for other player to press play...";
+
+        // Broadcast Ready
+        // Only send if we are matched/connected, logic handled below
+        if (this.network.transport && this.network.transport.isConnected) {
+            this.network.sendCommand({ type: CommandType.READY });
+        }
+
+        this.checkStartCondition();
         // --- LEVEL SELECTION ---
         // Use passed config
         this.config = selectedConfig || MasterLevelConfig;

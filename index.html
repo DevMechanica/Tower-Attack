@@ -84,6 +84,10 @@
                 <div class="welcome-content glass-panel">
                     <h1>TOWER ATTACK</h1>
                     <p>Defend the base or lead the assault!</p>
+                    <button id="start-btn" class="primary-btn big-play-btn">PLAY</button>
+                    <div style="margin-top: 20px;">
+                        <button id="mode-toggle-btn" class="secondary-btn" style="font-size: 0.8em;">SWITCH TO
+                            ONLINE</button>
                     <div class="welcome-buttons">
                         <button id="campaign-btn" class="primary-btn big-play-btn">CAMPAIGN</button>
                         <button id="multiplayer-btn" class="secondary-btn big-play-btn"
@@ -94,6 +98,8 @@
 
         </div>
     </div>
+    <!-- Socket.IO Client Library -->
+    <script src="/socket.io/socket.io.js"></script>
     <script type="module" src="src/main.js"></script>
 </body>
 

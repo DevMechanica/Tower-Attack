@@ -1,0 +1,12 @@
+runtime: nodejs20
+# Automatic scaling is default
+instance_class: F1
+automatic_scaling:
+  max_instances: 1
+network:
+  session_affinity: true
+entrypoint: node server.js
+handlers:
+  - url: /.*
+    script: auto
+    secure: always
