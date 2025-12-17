@@ -20,10 +20,15 @@ export class SocketTransport {
         // which guarantees connection even through restrictive firewalls/proxies.
         // It will upgrade to websocket if possible.
         // Use global 'io' from script tag
-        this.socket = io(this.url, {
-            transports: ['polling', 'websocket'],
-            reconnectionAttempts: 5
-        });
+        if (typeof io !== 'undefined') {
+            this.socket = io(this.url, {
+                transports: ['polling', 'websocket'],
+                reconnectionAttempts: 5
+            });
+        } else {
+            console.warn("[Socket] socket.io not loaded. Online mode unavailable.");
+            return;
+        }
 
         // Event Handling
         this.socket.on("connect", () => {
