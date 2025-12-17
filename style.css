@@ -185,6 +185,8 @@ html {
 }
 
 .card {
+    position: relative;
+    overflow: hidden;
     width: 90px;
     height: 110px;
     background: #444;
@@ -211,6 +213,28 @@ html {
     border-color: #ffd700;
     box-shadow: 0 0 15px #ffd700;
     transform: translateY(-10px);
+}
+
+.cooldown-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2rem;
+    font-weight: bold;
+    color: #fff;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.card.cooldown-active {
+    filter: grayscale(1.0);
+    cursor: not-allowed;
 }
 
 /* Theme Colors for Cards */

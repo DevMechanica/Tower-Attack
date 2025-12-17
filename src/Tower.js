@@ -11,7 +11,7 @@ export class Tower {
 
         this.range = 150;
         this.cooldown = 0;
-        this.maxCooldown = 1000; // ms
+        this.maxCooldown = 600; // Faster (was 1000)
 
         // Visuals
         this.radius = 20;
@@ -47,8 +47,8 @@ export class Tower {
 
         // Castle Base Overrides
         if (this.type === 'base_castle') {
-            this.health = 2000;
-            this.maxHealth = 2000;
+            this.health = 100;
+            this.maxHealth = 100;
             this.radius = 40; // Bigger
             this.color = '#fff'; // White
             this.range = 0; // Does not attack
@@ -90,7 +90,7 @@ export class Tower {
 
                     // Instant Hit + Chain Lightning
                     this.game.effects.spawnLightning(this.x, this.y - 40, target.x, target.y);
-                    target.takeDamage(20);
+                    target.takeDamage(40); // Increased from 20
 
                     // Simple Chain (find 1 neighbor)
                     const range = 200;
@@ -100,7 +100,7 @@ export class Tower {
                     );
                     if (neighbor) {
                         this.game.effects.spawnLightning(target.x, target.y, neighbor.x, neighbor.y);
-                        neighbor.takeDamage(10);
+                        neighbor.takeDamage(20); // Increased from 10
                     }
                 }
                 this.hasFired = true;

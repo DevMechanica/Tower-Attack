@@ -38,38 +38,38 @@ export class Unit {
 
     setupStats() {
         // Defaults
-        this.speed = 100;
-        this.health = 100;
-        this.maxHealth = 100;
+        this.speed = 110; // Increased
+        this.health = 167; // Reduced -5%
+        this.maxHealth = 167;
         this.radius = 15;
         this.range = 150;
         this.siegesBase = false; // Default: Kamikaze into base. Set true to stop and shoot.
 
         // Type Specific Overrides
         if (this.type === 'unit_tank') {
-            this.health = 300;
-            this.maxHealth = 300;
-            this.speed = 60;
+            this.health = 523; // Reduced -5%
+            this.maxHealth = 523;
+            this.speed = 60; // Increased
             this.radius = 20;
         } else if (this.type === 'unit_golem') {
-            this.health = 800;
-            this.maxHealth = 800;
-            this.speed = 40;
+            this.health = 1463; // Reduced -5%
+            this.maxHealth = 1463;
+            this.speed = 50; // Increased
             this.radius = 25;
         } else if (this.type === 'unit_mecha_dino') {
-            this.health = 400;
-            this.maxHealth = 400;
-            this.speed = 70;
+            this.health = 732; // Reduced -5%
+            this.maxHealth = 732;
+            this.speed = 80; // Increased
             this.radius = 30;
         } else if (this.type === 'unit_saber_rider') {
-            this.health = 250;
-            this.maxHealth = 250;
-            this.speed = 120;
+            this.health = 418; // Reduced -5%
+            this.maxHealth = 418;
+            this.speed = 140; // Increased
             this.radius = 20;
         } else if (this.type === 'unit_crawler') {
-            this.health = 80;
-            this.maxHealth = 80;
-            this.speed = 110;
+            this.health = 125; // Reduced -5%
+            this.maxHealth = 125;
+            this.speed = 130; // Increased
             this.radius = 15;
         }
     }
@@ -80,13 +80,7 @@ export class Unit {
             this.active = false;
             // Visuals
             if (this.game.effects) this.game.effects.spawnExplosion(this.x, this.y);
-            // Grant Gold
-            let bounty = 10;
-            if (this.type === 'unit_golem') bounty = 50;
-            if (this.type === 'unit_tank') bounty = 30;
-            if (this.type === 'unit_mecha_dino') bounty = 40;
-
-            this.game.attackerGold += bounty;
+            // No Gold Refund for Attacker Units!
         }
     }
 
@@ -138,11 +132,12 @@ export class Unit {
         // For this game, let's say they self-destruct for guaranteed damage if they touch it.
         // BUT, ideally they stop at range.
         this.active = false;
-        this.game.defenderLives -= 1;
+        this.game.defenderLives -= 15;
+        this.game.updateUI(); // Immediate Update
 
         // Also damage the base explicitly if it exists
         if (this.game.enemyBase && this.game.enemyBase.active) {
-            this.game.enemyBase.takeDamage(this.health); // Kamikaze damage? Or flat amount?
+            this.game.enemyBase.takeDamage(15); // Fixed 15 damage per unit
         }
     }
 
