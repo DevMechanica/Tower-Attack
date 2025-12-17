@@ -16,13 +16,22 @@ export class NetworkManager {
         const params = new URLSearchParams(window.location.search);
         const urlMode = params.get('mode');
 
-        if (urlMode) {
-            this.mode = urlMode;
-        } else {
-            // Auto-detect environment
-            const hostname = window.location.hostname;
-            if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                this.mode = 'local';
+        this.channel.onmessage = (event) => {
+            const command = event.data;
+
+            // Internal Handshake
+            if (command.type === 'DISCOVERY_REQUEST') {
+                if (this.isHost) {
+                    // I am the host, tell them!
+                    this.channel.postMessage({ type: 'DISCOVERY_RESPONSE', hostId: this.clientId });
+                    // Notify Game that someone connected
+                    if (this.onPeerDiscovered) this.onPeerDiscovered();
+                }
+            } else if (command.type === 'DISCOVERY_RESPONSE') {
+                // Someone else is host, so I am Client!
+                this.handleRoleAssignment(false); // Client
+                // Notify Game that we found a host
+                if (this.onPeerDiscovered) this.onPeerDiscovered();
             } else {
                 this.mode = 'online';
             }
