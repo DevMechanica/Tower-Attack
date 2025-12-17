@@ -37,6 +37,24 @@ export class Game {
             this.role = role;
             this.renderCards();
 
+            // WE ARE CONNECTED!
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) {
+                if (this.localReady) {
+                    // We clicked ready BEFORE matching. Re-send it now!
+                    console.log("[Game] Matched after Ready. Resending READY.");
+                    this.network.sendCommand({ type: CommandType.READY });
+                    startBtn.innerText = "WAITING FOR OPPONENT...";
+                } else {
+                    // Enable button
+                    startBtn.innerText = "START GAME";
+                    startBtn.disabled = false;
+                    startBtn.style.opacity = "1";
+                    startBtn.style.cursor = "pointer";
+                    // Play sound?
+                }
+            }
+
             // Visual Indicator
             const roleBtn = document.getElementById('role-switch-btn');
             if (roleBtn) {
@@ -44,6 +62,14 @@ export class Game {
                 roleBtn.disabled = true; // Lock it
                 roleBtn.style.opacity = "0.7";
                 roleBtn.style.cursor = "default";
+            }
+        };
+
+        this.network.onStatusChange = (status) => {
+            const statusParams = document.querySelector('#welcome-screen p');
+            if (statusParams) {
+                statusParams.innerText = status;
+                statusParams.style.color = "#ffff00";
             }
         };
 
@@ -272,9 +298,14 @@ export class Game {
 
         this.localReady = false;
         this.remoteReady = false;
+        this.isConnected = false;
 
+        // Visual State: Disable Play until matched
         if (startBtn) {
-            startBtn.innerText = "READY?";
+            startBtn.innerText = "CONNECTING...";
+            startBtn.disabled = true;
+            startBtn.style.opacity = "0.5";
+            startBtn.style.cursor = "not-allowed";
 
             startBtn.addEventListener('click', () => {
                 if (this.localReady) return; // Already clicked
@@ -284,12 +315,14 @@ export class Game {
                 startBtn.disabled = true;
                 startBtn.style.opacity = "0.5";
 
-                if (statusText) statusText.innerText = "Waiting for other player...";
+                if (statusText) statusText.innerText = "Waiting for other player to press play...";
 
                 // Broadcast Ready
-                this.network.sendCommand({ type: CommandType.READY });
+                // Only send if we are matched/connected, logic handled below
+                if (this.network.transport && this.network.transport.isConnected) {
+                    this.network.sendCommand({ type: CommandType.READY });
+                }
 
-                // Check if we are second to join (opponent already ready)
                 this.checkStartCondition();
             });
         }
