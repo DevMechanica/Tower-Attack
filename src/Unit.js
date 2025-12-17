@@ -38,7 +38,7 @@ export class Unit {
 
     setupStats() {
         // Defaults
-        this.speed = 100;
+        this.speed = 70; // Reduced from 100
         this.health = 100;
         this.maxHealth = 100;
         this.radius = 15;
@@ -49,27 +49,27 @@ export class Unit {
         if (this.type === 'unit_tank') {
             this.health = 300;
             this.maxHealth = 300;
-            this.speed = 60;
+            this.speed = 40; // Reduced from 60
             this.radius = 20;
         } else if (this.type === 'unit_golem') {
             this.health = 800;
             this.maxHealth = 800;
-            this.speed = 40;
+            this.speed = 30; // Reduced from 40
             this.radius = 25;
         } else if (this.type === 'unit_mecha_dino') {
             this.health = 400;
             this.maxHealth = 400;
-            this.speed = 70;
+            this.speed = 50; // Reduced from 70
             this.radius = 30;
         } else if (this.type === 'unit_saber_rider') {
             this.health = 250;
             this.maxHealth = 250;
-            this.speed = 120;
+            this.speed = 90; // Reduced from 120
             this.radius = 20;
         } else if (this.type === 'unit_crawler') {
             this.health = 80;
             this.maxHealth = 80;
-            this.speed = 110;
+            this.speed = 80; // Reduced from 110
             this.radius = 15;
         }
     }

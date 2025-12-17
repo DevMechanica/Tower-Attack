@@ -105,6 +105,8 @@ export class Game {
             e.preventDefault();
             this.deselectAll();
         });
+
+        this.attackerNextSpawnTime = 0; // Cooldown Tracker
     }
 
     deselectAll() {
@@ -575,6 +577,7 @@ export class Game {
         }
 
         // Update Sell Button Position
+        // Update Sell Button Position
         if (this.input.selectedEntity && this.uiSellBtn && this.renderer && this.role !== 'attacker') {
             // Need screen coordinates. Renderer/Map knows?
             // Map knows.
@@ -585,13 +588,39 @@ export class Game {
             const screenX = (entity.x * this.map.scale) + this.map.offsetX;
             const screenY = (entity.y * this.map.scale) + this.map.offsetY;
 
-            console.log(`[UI] Show Sell Btn at ${screenX}, ${screenY}`);
+            // console.log(`[UI] Show Sell Btn at ${screenX}, ${screenY}`); // Spammy
 
             this.uiSellBtn.style.display = 'flex';
             this.uiSellBtn.style.left = `${screenX + 30}px`; // Offset to right
             this.uiSellBtn.style.top = `${screenY - 30}px`;  // Offset up
         } else if (this.uiSellBtn) {
             this.uiSellBtn.style.display = 'none';
+        }
+
+        // Update Cooldown Visuals (Attacker)
+        if (this.role === 'attacker' && this.uiDock) {
+            const now = performance.now();
+            const remaining = Math.max(0, this.attackerNextSpawnTime - now);
+            const cards = this.uiDock.querySelectorAll('.card');
+
+            cards.forEach(card => {
+                if (card.dataset.id && card.dataset.id.startsWith('unit')) {
+                    const overlay = card.querySelector('.cooldown-overlay');
+                    if (remaining > 0) {
+                        card.classList.add('cooldown-active');
+                        if (overlay) {
+                            overlay.classList.remove('hidden');
+                            // Show 0.X or just Seconds? "1s" then empty?
+                            // User asked for "countdown timer". 1.0s is short.
+                            // Maybe shows "1" 
+                            overlay.innerText = (remaining / 1000).toFixed(1);
+                        }
+                    } else {
+                        card.classList.remove('cooldown-active');
+                        if (overlay) overlay.classList.add('hidden');
+                    }
+                }
+            });
         }
     }
 
@@ -605,6 +634,9 @@ export class Game {
         // ... (Same as old Game.js but setting input.selectedCard)
         this.uiDock.innerHTML = '';
         this.uiDock.className = `${this.role}-theme`;
+
+        // Cooldown Overlay Logic (could be refined later)
+        const cooldownActive = (this.role === 'attacker' && performance.now() < this.attackerNextSpawnTime);
 
         const items = (this.role === 'attacker')
             ? [
@@ -632,21 +664,34 @@ export class Game {
         filteredItems.forEach(item => {
             const card = document.createElement('div');
             card.className = 'card';
-            // Show Cost in Label
-            card.innerHTML = `<img src="${item.img}" class="card-icon-img"><span>${item.label} (${item.cost})</span>`;
+            card.dataset.id = item.id; // Store ID for UI updates
+
+            // Show Cost in Label + Cooldown Overlay
+            card.innerHTML = `
+                <img src="${item.img}" class="card-icon-img">
+                <span>${item.label} (${item.cost})</span>
+                <div class="cooldown-overlay hidden"></div>
+            `;
 
             card.onclick = () => {
-                this.audio.playClick();
-
                 // INSTANT SPAWN for Attacker (Units)
                 if (this.role === 'attacker' && item.id.startsWith('unit')) {
+                    // Check Cooldown FIRST
+                    const now = performance.now();
+                    if (now < this.attackerNextSpawnTime) {
+                        return; // Silent fail (visuals handled by updateUI)
+                    }
+
                     // Cost Check
                     if (this.attackerGold < item.cost) {
+                        this.audio.playClick(); // Play click for failure? Or error sound? keeping click for now.
                         // Visual feedback for too expensive
                         card.style.borderColor = "red";
                         setTimeout(() => card.style.borderColor = "", 200);
                         return;
                     }
+
+                    this.audio.playClick(); // Successful Click
 
                     const cmd = {
                         type: CommandType.SPAWN_UNIT,
@@ -657,6 +702,9 @@ export class Game {
                     // Deduct Gold
                     this.attackerGold -= item.cost;
                     this.updateUI();
+
+                    // Set Cooldown (1 Second)
+                    this.attackerNextSpawnTime = now + 1000;
 
                     // Visual feedback (Success)
                     card.style.transform = "scale(0.9)";
