@@ -15,20 +15,8 @@
 
             <!-- New HUD / -->
             <div id="hud-top" class="hidden">
-                <div class="player-panel defender">
-                    <div class="panel-icon">🛡️</div>
-                    <div class="bar-container">
-                        <div class="bar-label">P1 DEFENDER (RED)</div>
-                        <div class="health-bar">
-                            <div class="fill" style="width: 100%;"></div>
-                            <span class="value" id="defender-lives">20</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="vs-badge">VS</div>
-
                 <div class="player-panel attacker">
+                    <div class="panel-icon">💎</div>
                     <div class="bar-container">
                         <div class="bar-label">P2 ATTACKER (BLUE)</div>
                         <div class="resource-bar">
@@ -36,7 +24,19 @@
                             <span class="value" id="attacker-gold">100</span>
                         </div>
                     </div>
-                    <div class="panel-icon">💎</div>
+                </div>
+
+                <div class="vs-badge">VS</div>
+
+                <div class="player-panel defender">
+                    <div class="bar-container">
+                        <div class="bar-label">P1 DEFENDER (RED) - GOLD</div>
+                        <div class="health-bar">
+                            <div class="fill" style="width: 100%;"></div>
+                            <span class="value" id="defender-gold">5000</span>
+                        </div>
+                    </div>
+                    <div class="panel-icon">🛡️</div>
                 </div>
             </div>
 
@@ -68,6 +68,17 @@
                 </div>
             </div>
 
+            <!-- Level Select Screen (Hidden by default) -->
+            <div id="level-select-screen" class="hidden">
+                <div class="glass-panel">
+                    <h2>SELECT LEVEL</h2>
+                    <div id="level-list" class="menu-buttons">
+                        <!-- Buttons injected by JS -->
+                    </div>
+                    <button id="level-back-btn" class="secondary-btn" style="margin-top: 20px;">BACK</button>
+                </div>
+            </div>
+
             <!-- Welcome Screen -->
             <div id="welcome-screen">
                 <div class="welcome-content glass-panel">
@@ -77,6 +88,10 @@
                     <div style="margin-top: 20px;">
                         <button id="mode-toggle-btn" class="secondary-btn" style="font-size: 0.8em;">SWITCH TO
                             ONLINE</button>
+                    <div class="welcome-buttons">
+                        <button id="campaign-btn" class="primary-btn big-play-btn">CAMPAIGN</button>
+                        <button id="multiplayer-btn" class="secondary-btn big-play-btn"
+                            style="margin-top: 10px;">MULTIPLAYER</button>
                     </div>
                 </div>
             </div>

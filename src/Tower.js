@@ -44,6 +44,15 @@ export class Tower {
         this.idleFrameTimer = 0;
         this.idleTotalFrames = (type === 'tower_mage') ? 3 : 4;
         this.idleSpeed = this.idleDuration / this.idleTotalFrames;
+
+        // Castle Base Overrides
+        if (this.type === 'base_castle') {
+            this.health = 2000;
+            this.maxHealth = 2000;
+            this.radius = 40; // Bigger
+            this.color = '#fff'; // White
+            this.range = 0; // Does not attack
+        }
     }
 
     takeDamage(amount) {
@@ -229,6 +238,8 @@ export class Tower {
 
         // Map internal types to asset names
         let assetName = 'Main_tower';
+        if (this.type === 'base_castle') assetName = null;
+
         if (this.type === 'tower_mage') {
             if (this.isAttacking) {
                 assetName = 'tower_mage_anim';
@@ -280,6 +291,9 @@ export class Tower {
                 0, 0, sprite.width, sprite.height,
                 screenX - drawSize / 2, screenY - drawSize / 2 - (yOffset * scale), drawSize, drawSize
             );
+        } else if (this.type === 'base_castle') {
+            // Invisible Base (Art is in background)
+            // No render commands checks.
         } else {
             // Fallback Circle
             const size = this.radius * scale;
@@ -319,3 +333,9 @@ export class Tower {
         };
     }
 }
+
+export const TowerCosts = {
+    'tower_cannon': 50,
+    'tower_mage': 100,
+    'tower_tesla': 150
+};
