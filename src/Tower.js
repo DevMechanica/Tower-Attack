@@ -47,8 +47,8 @@ export class Tower {
 
         // Castle Base Overrides
         if (this.type === 'base_castle') {
-            this.health = 2000;
-            this.maxHealth = 2000;
+            this.health = 100;
+            this.maxHealth = 100;
             this.radius = 40; // Bigger
             this.color = '#fff'; // White
             this.range = 0; // Does not attack

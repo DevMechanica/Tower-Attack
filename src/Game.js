@@ -180,14 +180,11 @@ export class Game {
 
             if (this.enemyBase) {
                 // Sync UI Lives to Base Health
-                this.defenderLives = Math.max(0, this.enemyBase.health / 100); // Scale 2000 -> 20 for UI? Or just show raw? 
-                // Let's show raw percentage or simplified.
-                // Actually UI expects a small number (20). 2000 is too big.
-                // Let's map 2000 -> 20.
-                this.state.lives = (this.enemyBase.health / this.enemyBase.maxHealth) * 20;
+                this.defenderLives = Math.max(0, this.enemyBase.health);
+                this.state.lives = this.defenderLives;
 
-                if (!this.enemyBase.active) {
-                    this.endGame(true, "VICTORY! The Enemy Base is Destroyed!");
+                if (!this.enemyBase.active || this.defenderLives <= 0) {
+                    this.endGame(true, "VICTORY!");
                 }
             } else if (this.state.time > 3000 && this.state.towers.length === 0) {
                 // Fallback if no base exists (legacy/other levels)
@@ -196,17 +193,58 @@ export class Game {
 
             // Loss Condition: Run out of gold and units
             // And can't afford cheapest unit
-            if (this.state.units.length === 0 && this.attackerGold < 10) { // Assuming 10 is cheapest unit or similar
+            // Only trigger loss if VICTORY didn't happen (Active base)
+            if (this.enemyBase && this.enemyBase.active && this.state.units.length === 0 && this.attackerGold < 10) {
                 this.endGame(false, "DEFEAT! Out of resources.");
             }
         }
     }
 
     endGame(victory, message) {
-        alert(message); // Simple placeholder
         this.paused = true;
         this.gameStarted = false;
-        location.reload(); // Simple restart
+
+        // Create Overlay if not exists
+        let overlay = document.getElementById('game-over-screen');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'game-over-screen';
+            overlay.className = 'glass-panel full-screen-overlay';
+            overlay.style.position = 'absolute';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.background = 'rgba(0, 0, 0, 0.85)';
+            overlay.style.display = 'flex';
+            overlay.style.flexDirection = 'column';
+            overlay.style.justifyContent = 'center';
+            overlay.style.alignItems = 'center';
+            overlay.style.zIndex = '1000';
+            overlay.innerHTML = `
+                <h1 id="game-over-title" style="font-size: 4rem; margin-bottom: 20px;">VICTORY</h1>
+                <p id="game-over-msg" style="font-size: 1.5rem; margin-bottom: 40px; color: #ddd;"></p>
+                <div class="menu-buttons">
+                    <button id="go-restart-btn" class="primary-btn">REPLAY</button>
+                    <button id="go-menu-btn" class="secondary-btn">MAIN MENU</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            // Add Listeners
+            document.getElementById('go-restart-btn').onclick = () => location.reload();
+            document.getElementById('go-menu-btn').onclick = () => location.reload();
+        }
+
+        const title = overlay.querySelector('#game-over-title');
+        const msg = overlay.querySelector('#game-over-msg');
+
+        title.innerText = victory ? "VICTORY" : "DEFEAT";
+        title.style.color = victory ? "#4dff4d" : "#ff4d4d"; // Green vs Red
+        msg.innerText = message || (victory ? "The Enemy Base is Destroyed!" : "You ran out of resources.");
+
+        overlay.classList.remove('hidden');
+        overlay.style.display = 'flex';
     }
 
 

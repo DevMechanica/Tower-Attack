@@ -138,11 +138,12 @@ export class Unit {
         // For this game, let's say they self-destruct for guaranteed damage if they touch it.
         // BUT, ideally they stop at range.
         this.active = false;
-        this.game.defenderLives -= 1;
+        this.game.defenderLives -= 15;
+        this.game.updateUI(); // Immediate Update
 
         // Also damage the base explicitly if it exists
         if (this.game.enemyBase && this.game.enemyBase.active) {
-            this.game.enemyBase.takeDamage(this.health); // Kamikaze damage? Or flat amount?
+            this.game.enemyBase.takeDamage(15); // Fixed 15 damage per unit
         }
     }
 
