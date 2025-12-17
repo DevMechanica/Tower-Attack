@@ -15,27 +15,8 @@ export class NetworkManager {
         // Determine Mode
         const params = new URLSearchParams(window.location.search);
         const urlMode = params.get('mode');
+        this.mode = urlMode || 'local'; // Default to local for now, or 'online' if preferred
 
-        this.channel.onmessage = (event) => {
-            const command = event.data;
-
-            // Internal Handshake
-            if (command.type === 'DISCOVERY_REQUEST') {
-                if (this.isHost) {
-                    // I am the host, tell them!
-                    this.channel.postMessage({ type: 'DISCOVERY_RESPONSE', hostId: this.clientId });
-                    // Notify Game that someone connected
-                    if (this.onPeerDiscovered) this.onPeerDiscovered();
-                }
-            } else if (command.type === 'DISCOVERY_RESPONSE') {
-                // Someone else is host, so I am Client!
-                this.handleRoleAssignment(false); // Client
-                // Notify Game that we found a host
-                if (this.onPeerDiscovered) this.onPeerDiscovered();
-            } else {
-                this.mode = 'online';
-            }
-        }
         console.log(`[Network] Mode initialized to: ${this.mode}`);
     }
 
@@ -81,8 +62,15 @@ export class NetworkManager {
             if (this.mode === 'local') {
                 if (message.type === 'DISCOVERY_REQUEST' && this.isHost) {
                     this.transport.send({ type: 'DISCOVERY_RESPONSE', hostId: this.clientId });
+                    // Notify Game that peer connected, so we can re-broadcast state (READY)
+                    // Add slight delay to ensure Client has processed the Response and initialized
+                    setTimeout(() => {
+                        if (this.onPeerDiscovered) this.onPeerDiscovered();
+                    }, 500);
                 } else if (message.type === 'DISCOVERY_RESPONSE') {
                     this.handleRoleAssignment(false);
+                    // Notify Game that we found host
+                    if (this.onPeerDiscovered) this.onPeerDiscovered();
                 }
             }
         } else {

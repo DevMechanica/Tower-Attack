@@ -1,6 +1,8 @@
 import { Game } from './Game.js';
 
-window.addEventListener('load', () => {
+
+// Use DOMContentLoaded to attach listeners ASAP, before large assets finish loading
+window.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('game-canvas');
     // Mode Toggle Logic
     const modeBtn = document.getElementById('mode-toggle-btn');

@@ -487,3 +487,18 @@ button {
     max-height: 400px;
     overflow-y: auto;
 }
+
+/* Shared Fullscreen Menu Class */
+.fullscreen-menu {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, #1a237e 0%, #0d47a1 100%); /* Consistent Deep Blue */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 205; /* Above welcome screen */
+    pointer-events: auto;
+}

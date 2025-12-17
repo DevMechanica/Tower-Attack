@@ -48,6 +48,12 @@ export class Game {
             this.renderCards();
 
             // WE ARE CONNECTED!
+            const statusParams = document.querySelector('#welcome-screen p');
+            if (statusParams) {
+                statusParams.innerText = `Role Assigned: ${role.toUpperCase()}. Waiting for Match...`;
+                statusParams.style.color = "#ffff00";
+            }
+
             const startBtn = document.getElementById('start-btn');
             if (startBtn) {
                 if (this.localReady) {
@@ -62,6 +68,15 @@ export class Game {
                     startBtn.style.opacity = "1";
                     startBtn.style.cursor = "pointer";
                     // Play sound?
+                }
+            } else {
+                // If button is gone (Auto-Start UI)
+                // We assume auto-ready for now or just wait.
+                // In revised flow, we are 'localReady' from the start logic.
+                // We just need to ensure we send READY and update Text.
+                if (this.localReady) {
+                    this.network.sendCommand({ type: CommandType.READY });
+                    if (statusParams) statusParams.innerText = "Connected! Waiting for Opponent...";
                 }
             }
 
@@ -91,8 +106,8 @@ export class Game {
             }
         };
 
-        // Start Connection Logic NOW, after listeners are ready
-        this.network.connect();
+        // Start Connection Logic: DELAYED until mode selection
+        // this.network.connect();
 
         // --- 5. Input Layer ---
         this.input = new InputManager(canvas, this.map, this.network, this.state);
@@ -295,11 +310,13 @@ export class Game {
             if (cmd.playerId === this.network.clientId) return;
 
             console.log(`[Game] Opponent ${cmd.playerId} is READY`);
+
+            const statusParams = document.querySelector('#welcome-screen p');
+            if (statusParams) statusParams.innerText = "Opponent Ready! Checking start...";
+
             this.remoteReady = true;
             this.checkStartCondition();
 
-            // Update Text if waiting
-            const statusParams = document.querySelector('#welcome-screen p');
             if (statusParams && !this.gameStarted) {
                 statusParams.innerText = "Opponent is Ready! Waiting for you...";
                 statusParams.style.color = "#00ff00";
@@ -398,11 +415,14 @@ export class Game {
         this.setupLevelSelect();
 
         // Multiplayer Handler
+        // Multiplayer Handler
         if (multiplayerBtn) {
             multiplayerBtn.addEventListener('click', () => {
-                this.initMultiplayer(multiplayerBtn, statusText);
+                this.showMultiplayerMenu();
             });
         }
+
+        this.setupMultiplayerMenu();
     }
 
     setupLevelSelect() {
@@ -421,36 +441,112 @@ export class Game {
         this.remoteReady = false;
         this.isConnected = false;
 
+        if (listContainer) {
+            listContainer.innerHTML = '';
+            this.availableLevels.forEach(lvl => {
+                const btn = document.createElement('button');
+                btn.className = 'primary-btn';
+                btn.innerText = lvl.label;
+                btn.style.width = '100%';
+                btn.style.marginBottom = '10px';
+                btn.onclick = () => {
+                    levelScreen.classList.add('hidden');
+                    this.initCampaign(lvl.config);
+                };
+                listContainer.appendChild(btn);
+            });
+        }
+
+        if (backBtn) {
+            backBtn.onclick = () => {
+                levelScreen.classList.add('hidden');
+                welcomeScreen.classList.remove('hidden');
+            };
+        }
+
         // Visual State: Disable Play until matched
+        const startBtn = document.getElementById('start-btn');
+        if (startBtn) {
+            startBtn.innerText = "PLAY";
+            startBtn.disabled = true;
+            startBtn.style.opacity = "0.5";
+            startBtn.style.cursor = "not-allowed";
+        }
+    }
+
+    showMultiplayerMenu() {
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const mpMenu = document.getElementById('multiplayer-menu');
+        if (welcomeScreen) welcomeScreen.classList.add('hidden');
+        if (mpMenu) mpMenu.classList.remove('hidden');
+    }
+
+    setupMultiplayerMenu() {
+        const mpLocalBtn = document.getElementById('mp-local-btn');
+        const mpOnlineBtn = document.getElementById('mp-online-btn');
+        const mpBackBtn = document.getElementById('mp-back-btn');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const mpMenu = document.getElementById('multiplayer-menu');
+
+        if (mpLocalBtn) {
+            mpLocalBtn.onclick = () => {
+                console.log("[Game] Local Button Clicked");
+                mpMenu.classList.add('hidden');
+                try {
+                    this.startMultiplayer('local');
+                } catch (e) {
+                    console.error("[Game] Error starting local multiplayer:", e);
+                    // Show error on screen?
+                    alert("Error starting game: " + e.message);
+                }
+            };
+        }
+
+        if (mpOnlineBtn) {
+            mpOnlineBtn.onclick = () => {
+                console.log("[Game] Online Button Clicked");
+                mpMenu.classList.add('hidden');
+                try {
+                    this.startMultiplayer('online');
+                } catch (e) {
+                    console.error("[Game] Error starting online multiplayer:", e);
+                }
+            };
+        }
+
+        if (mpBackBtn) {
+            mpBackBtn.onclick = () => {
+                console.log("[Game] Back Button Clicked");
+                mpMenu.classList.add('hidden');
+                welcomeScreen.classList.remove('hidden');
+            };
+        }
+    }
+
+    startMultiplayer(mode) {
+        // Set Mode
+        this.network.mode = mode;
+        console.log(`[Game] Starting Multiplayer in ${mode} mode...`);
+
+        const statusText = document.querySelector('#welcome-screen p');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        welcomeScreen.classList.remove('hidden'); // Show it back to show status
+
+        // Update UI to "Connecting/Waiting"
         const startBtn = document.getElementById('start-btn');
         if (startBtn) {
             startBtn.innerText = "CONNECTING...";
             startBtn.disabled = true;
-            startBtn.style.opacity = "0.5";
-            startBtn.style.cursor = "not-allowed";
-            if (listContainer) {
-                listContainer.innerHTML = '';
-                this.availableLevels.forEach(lvl => {
-                    const btn = document.createElement('button');
-                    btn.className = 'primary-btn';
-                    btn.innerText = lvl.label;
-                    btn.style.width = '100%';
-                    btn.style.marginBottom = '10px';
-                    btn.onclick = () => {
-                        levelScreen.classList.add('hidden');
-                        this.initCampaign(lvl.config);
-                    };
-                    listContainer.appendChild(btn);
-                });
-            }
-
-            if (backBtn) {
-                backBtn.onclick = () => {
-                    levelScreen.classList.add('hidden');
-                    welcomeScreen.classList.remove('hidden');
-                };
-            }
         }
+
+        // Initialize State FIRST (sets localReady = true)
+        // Note: this will attempt to send READY, but transport might be null yet. 
+        // That is fine, NetworkManager.sendCommand handles null transport safely.
+        // The important part is setting localReady = true so onRoleAssigned works.
+        this.initMultiplayer(startBtn, statusText);
+
+        // Connect NOW
+        this.network.connect();
     }
 
     showLevelSelect() {
@@ -540,14 +636,16 @@ export class Game {
         const p2Label = document.querySelector('.player-panel.attacker .bar-label');
         if (p1Label) p1Label.innerText = "P1 DEFENDER (RED)";
         if (p2Label) p2Label.innerText = "P2 ATTACKER (BLUE)";
-
         // Lobby Logic
         if (this.localReady) return;
 
         this.localReady = true;
-        btnElement.innerText = "WAITING...";
-        btnElement.disabled = true;
-        btnElement.style.opacity = "0.5";
+
+        if (btnElement) {
+            btnElement.innerText = "WAITING...";
+            btnElement.disabled = true;
+            btnElement.style.opacity = "0.5";
+        }
 
         // Hide/Disable other button
         const campaignBtn = document.getElementById('campaign-btn');
