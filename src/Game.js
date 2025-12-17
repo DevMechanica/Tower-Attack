@@ -80,6 +80,9 @@ export class Game {
             if (statusParams) {
                 statusParams.innerText = status;
                 statusParams.style.color = "#ffff00";
+            }
+        };
+
         this.network.onPeerDiscovered = () => {
             console.log("[Game] Peer Discovered attempting to sync state...");
             if (this.localReady) {
@@ -106,7 +109,6 @@ export class Game {
         );
 
         // --- 8. UI/Game Flow ---
-        // (Keep Setup Logic from old Game.js)
         // (Keep Setup Logic from old Game.js)
         this.paused = true;
         this.gameStarted = false;
@@ -380,32 +382,34 @@ export class Game {
         this.isConnected = false;
 
         // Visual State: Disable Play until matched
+        const startBtn = document.getElementById('start-btn');
         if (startBtn) {
             startBtn.innerText = "CONNECTING...";
             startBtn.disabled = true;
             startBtn.style.opacity = "0.5";
             startBtn.style.cursor = "not-allowed";
-        if (listContainer) {
-            listContainer.innerHTML = '';
-            this.availableLevels.forEach(lvl => {
-                const btn = document.createElement('button');
-                btn.className = 'primary-btn';
-                btn.innerText = lvl.label;
-                btn.style.width = '100%';
-                btn.style.marginBottom = '10px';
-                btn.onclick = () => {
-                    levelScreen.classList.add('hidden');
-                    this.initCampaign(lvl.config);
-                };
-                listContainer.appendChild(btn);
-            });
-        }
+            if (listContainer) {
+                listContainer.innerHTML = '';
+                this.availableLevels.forEach(lvl => {
+                    const btn = document.createElement('button');
+                    btn.className = 'primary-btn';
+                    btn.innerText = lvl.label;
+                    btn.style.width = '100%';
+                    btn.style.marginBottom = '10px';
+                    btn.onclick = () => {
+                        levelScreen.classList.add('hidden');
+                        this.initCampaign(lvl.config);
+                    };
+                    listContainer.appendChild(btn);
+                });
+            }
 
-        if (backBtn) {
-            backBtn.onclick = () => {
-                levelScreen.classList.add('hidden');
-                welcomeScreen.classList.remove('hidden');
-            };
+            if (backBtn) {
+                backBtn.onclick = () => {
+                    levelScreen.classList.add('hidden');
+                    welcomeScreen.classList.remove('hidden');
+                };
+            }
         }
     }
 
@@ -420,15 +424,16 @@ export class Game {
     initCampaign(selectedConfig) {
         this.gamemode = 'campaign';
 
-                if (statusText) statusText.innerText = "Waiting for other player to press play...";
+        const statusText = document.querySelector('#welcome-screen p');
+        if (statusText) statusText.innerText = "Waiting for other player to press play...";
 
-                // Broadcast Ready
-                // Only send if we are matched/connected, logic handled below
-                if (this.network.transport && this.network.transport.isConnected) {
-                    this.network.sendCommand({ type: CommandType.READY });
-                }
+        // Broadcast Ready
+        // Only send if we are matched/connected, logic handled below
+        if (this.network.transport && this.network.transport.isConnected) {
+            this.network.sendCommand({ type: CommandType.READY });
+        }
 
-                this.checkStartCondition();
+        this.checkStartCondition();
         // --- LEVEL SELECTION ---
         // Use passed config
         this.config = selectedConfig || MasterLevelConfig;
