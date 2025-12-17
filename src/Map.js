@@ -1,8 +1,37 @@
 export class Map {
     constructor(game) {
         this.game = game;
-        this.background = new Image();
-        this.background.src = 'assets/background.jpg'; // Relative to index.html (in root)
+
+        // Create two video elements: intro (plays once) and loop (plays forever)
+        this.introVideo = document.createElement('video');
+        this.introVideo.src = 'assets/maps/Default/2dd77380-cce6-4b16-a8ca-25a0c97343cf.mp4';
+        this.introVideo.muted = true;
+        this.introVideo.playsInline = true;
+        this.introVideo.loop = false; // Play once only
+
+        this.loopVideo = document.createElement('video');
+        this.loopVideo.src = 'assets/maps/Default/a19be687-ec10-421d-8d5a-556fcd208e55.mp4';
+        this.loopVideo.muted = true;
+        this.loopVideo.playsInline = true;
+        this.loopVideo.loop = true; // Loop forever
+
+        // Track which video is currently active
+        this.background = this.introVideo; // Start with intro
+        this.introPlayed = false;
+
+        // When intro ends, switch to loop video
+        this.introVideo.addEventListener('ended', () => {
+            console.log('[Map] Intro video ended, switching to loop video');
+            this.background = this.loopVideo;
+            this.introPlayed = true;
+            this.loopVideo.play().catch(err => console.warn('Loop video play failed:', err));
+            this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
+        });
+
+        // Start playing the intro video
+        this.introVideo.play().catch(err => {
+            console.warn('Intro video autoplay failed:', err);
+        });
 
         // Asset Loading
         this.assets = {};
@@ -60,16 +89,17 @@ export class Map {
         this.loaded = false;
 
         const checkLoad = () => {
-            // Check if background + all assets are loaded
-            // Basic check: just ensure background is done for now, or improve logic
-            // Ideally we count outstanding loads.
-            if (this.background.complete) {
+            // Check if intro video is loaded and ready
+            if (this.introVideo.readyState >= 2) {
                 this.loaded = true;
                 this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
             }
         };
 
-        this.background.onload = checkLoad;
+        // Listen for loadeddata on intro video
+        this.introVideo.addEventListener('loadeddata', checkLoad);
+        // Also check immediately in case already loaded
+        checkLoad();
         // Note: Simple individual onload management for lists is tricky, 
         // usually we'd use a Promise.all or a counter. 
         // For this simple engine, we'll assume they load fast enough or check actively in render (which fails gracefully).
@@ -84,6 +114,9 @@ export class Map {
         this.scale = 1;
         this.offsetX = 0;
         this.offsetY = 0;
+
+        // Camera vertical offset to show more of the top (portal area)
+        this.cameraOffsetY = 20; // Shift down by 100px to reveal top portal
 
         // Waypoints provided by user
         this.path = [
@@ -160,16 +193,15 @@ export class Map {
     updateDimensions(width, height) {
         if (!this.loaded) return;
 
-        // Scale to fit "contain" style or "cover" - User wants "one to one", so probably "contain" to see full map
-        // or "cover" to utilize full mobile screen. 
-        // Strategy: "Contain" to ensure gameplay area is visible, with potential black bars if aspect ratio differs wildly.
+        // Use "cover" strategy to fill the entire viewport
+        // This will crop the video edges if needed but ensures full coverage (like CSS background-size: cover)
 
-        const scaleX = width / this.background.width;
-        const scaleY = height / this.background.height;
-        this.scale = Math.min(scaleX, scaleY);
+        const scaleX = width / this.background.videoWidth;
+        const scaleY = height / this.background.videoHeight;
+        this.scale = Math.max(scaleX, scaleY); // Changed from Math.min to Math.max for "cover" behavior
 
-        this.drawWidth = this.background.width * this.scale;
-        this.drawHeight = this.background.height * this.scale;
+        this.drawWidth = this.background.videoWidth * this.scale;
+        this.drawHeight = this.background.videoHeight * this.scale;
 
         this.offsetX = (width - this.drawWidth) / 2;
         this.offsetY = (height - this.drawHeight) / 2;
@@ -179,8 +211,18 @@ export class Map {
     getGameCoordinates(clientX, clientY) {
         if (!this.loaded) return null;
         const x = (clientX - this.offsetX) / this.scale;
-        const y = (clientY - this.offsetY) / this.scale;
+        const y = (clientY - this.offsetY - this.cameraOffsetY) / this.scale;
         return { x, y };
+    }
+
+    // Reset video sequence for new match
+    resetVideoSequence() {
+        this.introPlayed = false;
+        this.background = this.introVideo;
+        this.introVideo.currentTime = 0;
+        this.loopVideo.pause();
+        this.loopVideo.currentTime = 0;
+        this.introVideo.play().catch(err => console.warn('Intro restart failed:', err));
     }
 
     update(deltaTime) {
@@ -194,11 +236,11 @@ export class Map {
             return;
         }
 
-        // Draw Background
+        // Draw Background Video with vertical offset to show top portal
         ctx.drawImage(
             this.background,
-            0, 0, this.background.width, this.background.height,
-            this.offsetX, this.offsetY, this.drawWidth, this.drawHeight
+            0, 0, this.background.videoWidth, this.background.videoHeight,
+            this.offsetX, this.offsetY + this.cameraOffsetY, this.drawWidth, this.drawHeight
         );
     }
 }
