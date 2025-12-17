@@ -537,7 +537,7 @@ export class Game {
         }
 
         // Update Sell Button Position
-        if (this.input.selectedEntity && this.uiSellBtn && this.renderer) {
+        if (this.input.selectedEntity && this.uiSellBtn && this.renderer && this.role !== 'attacker') {
             // Need screen coordinates. Renderer/Map knows?
             // Map knows.
             const entity = this.input.selectedEntity;
