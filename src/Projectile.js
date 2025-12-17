@@ -6,8 +6,8 @@ export class Projectile {
         this.target = target;
         this.type = type; // 'bullet', 'magic', 'laser'
 
-        this.speed = 300; // px per second
-        this.damage = 10;
+        this.speed = 500; // px per second (was 300)
+        this.damage = 25; // was 10
         this.active = true;
 
         this.radius = 4;
@@ -15,8 +15,8 @@ export class Projectile {
 
         if (this.type === 'magic') {
             this.color = '#ff00ff';
-            this.damage = 15;
-            this.speed = 250;
+            this.damage = 35; // was 15
+            this.speed = 400; // was 250
         }
     }
 
