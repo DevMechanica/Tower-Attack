@@ -4,34 +4,58 @@ export class Map {
 
         // Create two video elements: intro (plays once) and loop (plays forever)
         this.introVideo = document.createElement('video');
-        this.introVideo.src = 'assets/maps/Default/2dd77380-cce6-4b16-a8ca-25a0c97343cf.mp4';
+        this.introVideo.src = 'assets/maps/Default/download (15).mp4';
         this.introVideo.muted = true;
         this.introVideo.playsInline = true;
         this.introVideo.loop = false; // Play once only
 
         this.loopVideo = document.createElement('video');
-        this.loopVideo.src = 'assets/maps/Default/a19be687-ec10-421d-8d5a-556fcd208e55.mp4';
+        this.loopVideo.src = 'assets/maps/Default/download (17).mp4';
         this.loopVideo.muted = true;
         this.loopVideo.playsInline = true;
         this.loopVideo.loop = true; // Loop forever
+        this.loopVideo.preload = 'auto'; // Preload the video to avoid flash
 
         // Track which video is currently active
         this.background = this.introVideo; // Start with intro
         this.introPlayed = false;
 
-        // When intro ends, switch to loop video
+        // Preload and buffer the loop video (start playing but paused at first frame)
+        this.loopVideo.addEventListener('loadeddata', () => {
+            console.log('[Map] Loop video preloaded and ready');
+        });
+
+        // Switch to loop video 0.5 seconds before intro ends for smoother transition
+        this.introVideo.addEventListener('timeupdate', () => {
+            if (!this.introPlayed && this.introVideo.duration &&
+                this.introVideo.currentTime >= this.introVideo.duration - 0.5) {
+                console.log('[Map] Switching to loop video 0.5s before intro ends');
+                this.background = this.loopVideo;
+                this.introPlayed = true;
+                this.loopVideo.play().catch(err => console.warn('Loop video play failed:', err));
+                this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
+            }
+        });
+
+        // Fallback: Also listen for 'ended' in case timeupdate misses it
         this.introVideo.addEventListener('ended', () => {
-            console.log('[Map] Intro video ended, switching to loop video');
-            this.background = this.loopVideo;
-            this.introPlayed = true;
-            this.loopVideo.play().catch(err => console.warn('Loop video play failed:', err));
-            this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
+            if (!this.introPlayed) {
+                console.log('[Map] Intro video ended (fallback), switching to loop video');
+                this.background = this.loopVideo;
+                this.introPlayed = true;
+                this.loopVideo.play().catch(err => console.warn('Loop video play failed:', err));
+                this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
+            }
         });
 
         // Start playing the intro video
         this.introVideo.play().catch(err => {
             console.warn('Intro video autoplay failed:', err);
         });
+
+        // Start buffering the loop video immediately (but don't show it yet)
+        // This ensures it's ready when the intro ends
+        this.loopVideo.load();
 
         // Asset Loading
         this.assets = {};
@@ -116,7 +140,7 @@ export class Map {
         this.offsetY = 0;
 
         // Camera vertical offset to show more of the top (portal area)
-        this.cameraOffsetY = 20; // Shift down by 100px to reveal top portal
+        this.cameraOffsetY = 0; // No offset - fill entire screen
 
         // Waypoints provided by user
         this.path = [
@@ -239,11 +263,11 @@ export class Map {
             return;
         }
 
-        // Draw Background Video with vertical offset to show top portal
+        // Draw Background Video - fills entire screen
         ctx.drawImage(
             this.background,
             0, 0, this.background.videoWidth, this.background.videoHeight,
-            this.offsetX, this.offsetY + this.cameraOffsetY, this.drawWidth, this.drawHeight
+            this.offsetX, this.offsetY, this.drawWidth, this.drawHeight
         );
     }
 }

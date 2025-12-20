@@ -3,6 +3,10 @@ export class Renderer {
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = this.canvas.getContext('2d');
+
+        // Enable high-quality rendering for better video/image quality
+        this.ctx.imageSmoothingEnabled = true;
+        this.ctx.imageSmoothingQuality = 'high';
     }
 
     draw(gameState, map) {
