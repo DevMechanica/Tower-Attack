@@ -20,17 +20,23 @@ export class Map {
         this.background = this.introVideo; // Start with intro
         this.introPlayed = false;
 
+        // Crossfade transition state
+        this.isTransitioning = false;
+        this.transitionProgress = 0; // 0 = intro only, 1 = loop only
+        this.transitionDuration = 1000; // 1 second crossfade
+
         // Preload and buffer the loop video (start playing but paused at first frame)
         this.loopVideo.addEventListener('loadeddata', () => {
             console.log('[Map] Loop video preloaded and ready');
         });
 
-        // Switch to loop video 0.5 seconds before intro ends for smoother transition
+        // Start crossfade transition 1 second before intro ends
         this.introVideo.addEventListener('timeupdate', () => {
             if (!this.introPlayed && this.introVideo.duration &&
-                this.introVideo.currentTime >= this.introVideo.duration - 0.5) {
-                console.log('[Map] Switching to loop video 0.5s before intro ends');
-                this.background = this.loopVideo;
+                this.introVideo.currentTime >= this.introVideo.duration - 1.0) {
+                console.log('[Map] Starting crossfade transition to loop video');
+                this.isTransitioning = true;
+                this.transitionProgress = 0;
                 this.introPlayed = true;
                 this.loopVideo.play().catch(err => console.warn('Loop video play failed:', err));
                 this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
@@ -40,8 +46,9 @@ export class Map {
         // Fallback: Also listen for 'ended' in case timeupdate misses it
         this.introVideo.addEventListener('ended', () => {
             if (!this.introPlayed) {
-                console.log('[Map] Intro video ended (fallback), switching to loop video');
-                this.background = this.loopVideo;
+                console.log('[Map] Intro video ended (fallback), starting crossfade');
+                this.isTransitioning = true;
+                this.transitionProgress = 0;
                 this.introPlayed = true;
                 this.loopVideo.play().catch(err => console.warn('Loop video play failed:', err));
                 this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
@@ -144,44 +151,32 @@ export class Map {
 
         // Waypoints provided by user
         this.path = [
-            { x: 229, y: 137 },
-            { x: 301, y: 193 },
-            { x: 375, y: 237 },
-            { x: 412, y: 265 },
-            { x: 390, y: 312 },
-            { x: 316, y: 359 },
-            { x: 253, y: 409 },
-            { x: 267, y: 475 },
-            { x: 330, y: 516 },
-            { x: 415, y: 543 },
-            { x: 480, y: 526 },
-            { x: 566, y: 490 },
-            { x: 642, y: 521 },
-            { x: 738, y: 541 },
-            { x: 815, y: 470 },
-            { x: 873, y: 443 },
-            { x: 958, y: 455 },
-            { x: 1009, y: 500 },
-            { x: 1050, y: 525 }
+            { x: 393, y: 309 },
+            { x: 505, y: 381 },
+            { x: 606, y: 441 },
+            { x: 525, y: 553 },
+            { x: 391, y: 634 },
+            { x: 383, y: 722 },
+            { x: 483, y: 834 },
+            { x: 657, y: 864 },
+            { x: 839, y: 794 },
+            { x: 971, y: 874 },
+            { x: 1214, y: 806 },
+            { x: 1299, y: 723 },
+            { x: 1453, y: 772 },
+            { x: 1561, y: 836 }
         ];
 
         // Tower Slots provided by user (Defender build spots)
         this.towerSlots = [
-            { x: 486, y: 532, occupied: false }, // Updated per user debug
-            { x: 668, y: 417, occupied: false },
-            { x: 726, y: 334, occupied: false },
-            { x: 779, y: 262, occupied: false },
-            { x: 840, y: 339, occupied: false },
-            { x: 768, y: 434, occupied: false },
-            { x: 712, y: 526, occupied: false },
-            { x: 857, y: 634, occupied: false },
-            { x: 893, y: 551, occupied: false },
-            { x: 779, y: 810, occupied: false },
-            { x: 634, y: 799, occupied: false },
-            { x: 467, y: 715, occupied: false },
-            { x: 334, y: 754, occupied: false },
-            { x: 250, y: 654, occupied: false },
-            { x: 534, y: 652, occupied: false } // New slot added per user request
+            { x: 1079.7891036906854, y: 782.390158172232, occupied: false },
+            { x: 1204.639718804921, y: 689.0333919156415, occupied: false },
+            { x: 1465.5887521968366, y: 440.45694200351494, occupied: false },
+            { x: 1348.6115992970124, y: 350.47451669595785, occupied: false },
+            { x: 1085.4130052724079, y: 451.7047451669596, occupied: false },
+            { x: 1484.7100175746925, y: 648.5413005272408, occupied: false },
+            { x: 1335.1142355008787, y: 843.128295254833, occupied: false },
+            { x: 1627.5571177504394, y: 543.9367311072057, occupied: false }
         ];
     }
 
@@ -234,6 +229,21 @@ export class Map {
         this.offsetY = (height - this.drawHeight) / 2;
     }
 
+    // Helper method to calculate dimensions for a specific video element
+    getVideoDimensions(video, canvasWidth, canvasHeight) {
+        const scaleX = canvasWidth / video.videoWidth;
+        const scaleY = canvasHeight / video.videoHeight;
+        const scale = Math.max(scaleX, scaleY);
+
+        const drawWidth = video.videoWidth * scale;
+        const drawHeight = video.videoHeight * scale;
+
+        const offsetX = (canvasWidth - drawWidth) / 2;
+        const offsetY = (canvasHeight - drawHeight) / 2;
+
+        return { offsetX, offsetY, drawWidth, drawHeight };
+    }
+
     // Convert screen coordinate to game background coordinate
     getGameCoordinates(clientX, clientY) {
         if (!this.loaded) return null;
@@ -253,7 +263,16 @@ export class Map {
     }
 
     update(deltaTime) {
-        // Update entities
+        // Update crossfade transition
+        if (this.isTransitioning) {
+            this.transitionProgress += deltaTime / this.transitionDuration;
+            if (this.transitionProgress >= 1) {
+                this.transitionProgress = 1;
+                this.isTransitioning = false;
+                this.background = this.loopVideo; // Switch to loop as primary
+                console.log('[Map] Crossfade complete');
+            }
+        }
     }
 
     render(ctx) {
@@ -263,11 +282,42 @@ export class Map {
             return;
         }
 
-        // Draw Background Video - fills entire screen
-        ctx.drawImage(
-            this.background,
-            0, 0, this.background.videoWidth, this.background.videoHeight,
-            this.offsetX, this.offsetY, this.drawWidth, this.drawHeight
-        );
+        // Draw Background Video with crossfade transition
+        if (this.isTransitioning) {
+            const canvasWidth = this.game.canvas.width;
+            const canvasHeight = this.game.canvas.height;
+
+            // Calculate dimensions for intro video
+            const introDims = this.getVideoDimensions(this.introVideo, canvasWidth, canvasHeight);
+
+            // Draw intro video with fading alpha
+            ctx.globalAlpha = 1 - this.transitionProgress;
+            ctx.drawImage(
+                this.introVideo,
+                0, 0, this.introVideo.videoWidth, this.introVideo.videoHeight,
+                introDims.offsetX, introDims.offsetY, introDims.drawWidth, introDims.drawHeight
+            );
+
+            // Calculate dimensions for loop video
+            const loopDims = this.getVideoDimensions(this.loopVideo, canvasWidth, canvasHeight);
+
+            // Draw loop video with increasing alpha
+            ctx.globalAlpha = this.transitionProgress;
+            ctx.drawImage(
+                this.loopVideo,
+                0, 0, this.loopVideo.videoWidth, this.loopVideo.videoHeight,
+                loopDims.offsetX, loopDims.offsetY, loopDims.drawWidth, loopDims.drawHeight
+            );
+
+            // Reset alpha
+            ctx.globalAlpha = 1;
+        } else {
+            // Draw current background video normally
+            ctx.drawImage(
+                this.background,
+                0, 0, this.background.videoWidth, this.background.videoHeight,
+                this.offsetX, this.offsetY, this.drawWidth, this.drawHeight
+            );
+        }
     }
 }
