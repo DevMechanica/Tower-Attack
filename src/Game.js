@@ -234,16 +234,7 @@ export class Game {
                 this.endGame(true, "VICTORY! All towers destroyed.");
             }
 
-            // --- GIFT MECHANIC: Spawn bonus units from time to time ---
-            // Timer init
-            if (!this.giftTimer) this.giftTimer = 0;
-            this.giftTimer += deltaTime;
 
-            // Spawn every 30 seconds (30000ms)
-            if (this.giftTimer > 30000) {
-                this.spawnGiftUnit();
-                this.giftTimer = 0;
-            }
 
             // Loss Condition: Run out of gold and units
             // And can't afford cheapest unit
@@ -413,26 +404,7 @@ export class Game {
         this.start(); // Start the Loop!
     }
 
-    spawnGiftUnit() {
-        // 1. Show Visual Popup
-        const msg = document.createElement('div');
-        msg.innerText = "🎁 GIFT: REINFORCEMENTS ARRIVED! 🎁";
-        msg.className = "gift-popup";
-        document.body.appendChild(msg);
-        setTimeout(() => msg.remove(), 3000);
 
-        // 2. Play Sound (if available)
-        // this.audio.playPowerup(); // Assuming exists, otherwise skip
-
-        // 3. Spawn Unit
-        if (this.map.path.length > 0) {
-            // Spawn a strong unit (e.g. Tank or Golem)
-            // Or random? Let's go with Tank for now.
-            const unitType = 'unit_tank';
-            console.log(`[Game] Gift Spawned: ${unitType}`);
-            this.state.units.push(UnitFactory.createUnit(this, this.map.path, unitType));
-        }
-    }
 
     // Override setupWelcome for Campaign
     setupWelcome() {
