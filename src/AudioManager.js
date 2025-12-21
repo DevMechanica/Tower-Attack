@@ -6,6 +6,7 @@ export class AudioManager {
 
         this.sounds = {};
         this.enabled = true;
+        this.masterVolume = 0.5; // Default volume
 
         // Preload sounds
         this.load('click', 'assets/music/PressingButton.wav');
@@ -27,6 +28,10 @@ export class AudioManager {
         this.sounds[name] = audio;
     }
 
+    setMasterVolume(vol) {
+        this.masterVolume = Math.max(0, Math.min(1, vol));
+    }
+
     play(name, volume = 0.5) {
         if (!this.enabled) return;
 
@@ -34,7 +39,7 @@ export class AudioManager {
         if (sound) {
             // Clone node to allow overlapping sounds
             const clone = sound.cloneNode();
-            clone.volume = volume;
+            clone.volume = volume * this.masterVolume;
             clone.play().catch(e => console.warn(`Failed to play sound: ${name}`, e));
         } else {
             console.warn(`Sound not found: ${name}`);

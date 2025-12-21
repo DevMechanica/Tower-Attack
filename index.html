@@ -14,6 +14,14 @@
         <div id="ui-layer">
 
             <!-- New HUD / -->
+            <div id="matchmaking-status" class="glass-panel hidden"
+                style="position: absolute; top: 20px; right: 20px; padding: 10px 20px; z-index: 500; display: flex; align-items: center; gap: 15px; pointer-events: auto;">
+                <div class="loader"></div>
+                <span id="match-status-text">Searching for opponent...</span>
+                <button id="cancel-match-btn" class="icon-btn"
+                    style="background:none; border:none; color:white; font-size:1.2rem; cursor:pointer;">❌</button>
+            </div>
+
             <div id="hud-top" class="hidden">
                 <div class="player-panel attacker">
                     <div class="panel-icon">💎</div>
@@ -60,48 +68,124 @@
                 <div class="menu-content glass-panel">
                     <h2>PAUSED</h2>
                     <div class="menu-buttons">
-                        <button id="resume-btn" class="primary-btn">RESUME</button>
-                        <button id="restart-btn" class="secondary-btn">RESTART</button>
-                        <button id="level-select-btn" class="secondary-btn">SELECT LEVEL</button>
-                        <button id="exit-btn" class="secondary-btn">EXIT</button>
+                        <button id="resume-btn" class="primary-btn big-play-btn">RESUME</button>
+                        <button id="restart-btn" class="secondary-btn big-play-btn">RESTART</button>
+                        <button id="level-select-btn" class="secondary-btn big-play-btn">SELECT LEVEL</button>
+                        <button id="exit-btn" class="secondary-btn big-play-btn">EXIT</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Level Select Screen (Hidden by default) -->
-            <div id="level-select-screen" class="hidden">
-                <div class="glass-panel">
-                    <h2>SELECT LEVEL</h2>
-                    <div id="level-list" class="menu-buttons">
-                        <!-- Buttons injected by JS -->
-                    </div>
-                    <button id="level-back-btn" class="secondary-btn" style="margin-top: 20px;">BACK</button>
-                </div>
-            </div>
 
-            <!-- Multiplayer Mode Select Screen (Hidden by default) -->
-            <div id="multiplayer-menu" class="hidden fullscreen-menu">
-                <div class="glass-panel">
-                    <h2>MULTIPLAYER MODE</h2>
-                    <div class="menu-buttons">
-                        <button id="mp-local-btn" class="primary-btn">LOCAL (SAME WIFI/LAN)</button>
-                        <button id="mp-online-btn" class="primary-btn">ONLINE</button>
-                        <button id="mp-back-btn" class="secondary-btn">BACK</button>
-                    </div>
-                </div>
-            </div>
+
+
 
             <!-- Welcome Screen -->
-            <div id="welcome-screen">
-                <div class="welcome-content glass-panel">
-                    <h1>TOWER ATTACK</h1>
-                    <p>Defend the base or lead the assault!</p>
-                    <div class="welcome-buttons">
-                        <button id="campaign-btn" class="primary-btn big-play-btn">CAMPAIGN</button>
-                        <button id="multiplayer-btn" class="secondary-btn big-play-btn"
-                            style="margin-top: 10px;">MULTIPLAYER</button>
+            <!-- Main Menu / Welcome Screen -->
+            <div id="welcome-screen" class="main-menu-bg">
+
+                <!-- Background Video -->
+                <video id="menu-bg-video" autoplay muted loop playsinline>
+                    <source src="assets/maps/Default/a19be687-ec10-421d-8d5a-556fcd208e55.mp4" type="video/mp4">
+                </video>
+
+                <!-- Left Sidebar -->
+                <div class="menu-sidebar">
+                    <!-- Profile Header -->
+                    <div class="profile-header">
+                        <div class="profile-avatar-frame">
+                            <img src="assets/units/soldier/Main_soldier.png" alt="Profile" class="profile-img">
+                            <div class="level-badge">25</div>
+                        </div>
+                        <div class="profile-details">
+                            <div class="profile-name">Elara</div>
+                            <div class="profile-rank">Knight</div>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar Currency (Relocated) -->
+                    <div class="sidebar-currency-display">
+                        <div class="currency-item">
+                            <div class="currency-icon token">⚔️</div>
+                            <div class="currency-value">500</div>
+                        </div>
+                        <div class="currency-item">
+                            <div class="currency-icon gold">📀</div>
+                            <div class="currency-value">1136</div>
+                        </div>
+                        <div class="currency-item">
+                            <div class="currency-icon gem">💎</div>
+                            <div class="currency-value">50</div>
+                        </div>
+                    </div>
+
+                    <!-- Main Navigation -->
+                    <div class="main-nav-buttons">
+                        <button id="play-battle-btn" class="main-menu-btn primary-gold">PLAY BATTLE</button>
+                        <button class="main-menu-btn">UNITS</button>
+                        <button class="main-menu-btn">TOWERS</button>
+                        <button class="main-menu-btn">SHOP</button>
+                        <button id="main-settings-btn" class="main-menu-btn">SETTINGS</button>
+                        <button class="main-menu-btn">CLAN</button>
                     </div>
                 </div>
+
+                <!-- Game Logo Centered Top -->
+                <div class="game-logo-container">
+                    <h1 class="main-logo-text">TOWER ATTACK</h1>
+                </div>
+
+                <!-- Mode Selection Modal (Hidden by default, triggered by PLAY BATTLE) -->
+                <div id="mode-select-popup" class="hidden">
+                    <div class="glass-panel">
+                        <h2>CHOOSE MODE</h2>
+                        <div class="welcome-buttons">
+                            <button id="campaign-btn" class="primary-btn big-play-btn">CAMPAIGN</button>
+                            <button id="multiplayer-btn" class="secondary-btn big-play-btn">MULTIPLAYER</button>
+                            <button id="mode-close-btn" class="secondary-btn big-play-btn">BACK</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Modal (Hidden by default) -->
+                <div id="settings-modal" class="hidden">
+                    <div class="glass-panel">
+                        <h2>SETTINGS</h2>
+                        <div class="settings-control">
+                            <label for="volume-slider"
+                                style="color: #ffd700; font-size: 1.2rem; display: block; margin-bottom: 10px;">MASTER
+                                VOLUME</label>
+                            <input type="range" id="volume-slider" min="0" max="100" value="50"
+                                style="width: 80%; margin-bottom: 20px;">
+                        </div>
+                        <br>
+                        <button id="settings-close-btn" class="secondary-btn big-play-btn">CLOSE</button>
+                    </div>
+                </div>
+
+                <!-- Level Select Modal (Refactored) -->
+                <div id="level-select-screen" class="hidden">
+                    <div class="glass-panel">
+                        <h2>SELECT LEVEL</h2>
+                        <div id="level-list" class="menu-buttons">
+                            <!-- Buttons injected by JS -->
+                        </div>
+                        <button id="level-back-btn" class="secondary-btn big-play-btn">BACK</button>
+                    </div>
+                </div>
+
+                <!-- Multiplayer Mode Select Modal (Refactored) -->
+                <div id="multiplayer-menu" class="hidden">
+                    <div class="glass-panel">
+                        <h2>MULTIPLAYER MODE</h2>
+                        <div class="menu-buttons">
+                            <button id="mp-local-btn" class="primary-btn big-play-btn">LOCAL (SAME WIFI/LAN)</button>
+                            <button id="mp-online-btn" class="primary-btn big-play-btn">ONLINE</button>
+                            <button id="mp-back-btn" class="secondary-btn big-play-btn">BACK</button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
         </div>
