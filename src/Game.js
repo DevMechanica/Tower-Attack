@@ -134,6 +134,7 @@ export class Game {
 
         this.setupUI();
         this.setupMenu();
+        this.setupPauseMenu();
         this.setupWelcome();
 
         // Initial Resize
@@ -231,6 +232,17 @@ export class Game {
             } else if (this.state.time > 3000 && this.state.towers.length === 0) {
                 // Fallback if no base exists (legacy/other levels)
                 this.endGame(true, "VICTORY! All towers destroyed.");
+            }
+
+            // --- GIFT MECHANIC: Spawn bonus units from time to time ---
+            // Timer init
+            if (!this.giftTimer) this.giftTimer = 0;
+            this.giftTimer += deltaTime;
+
+            // Spawn every 30 seconds (30000ms)
+            if (this.giftTimer > 30000) {
+                this.spawnGiftUnit();
+                this.giftTimer = 0;
             }
 
             // Loss Condition: Run out of gold and units
@@ -387,8 +399,10 @@ export class Game {
         const cardDock = document.getElementById('card-dock');
         const roleBtn = document.getElementById('role-switch-btn');
         const menuBtn = document.getElementById('menu-btn');
+        const matchWidget = document.getElementById('matchmaking-status'); // NEW
 
         if (welcomeScreen) welcomeScreen.classList.add('hidden');
+        if (matchWidget) matchWidget.classList.add('hidden'); // Fix: Hide widget if game starts
         if (hudTop) hudTop.classList.remove('hidden');
         if (cardDock) cardDock.classList.remove('hidden');
         if (roleBtn) roleBtn.classList.remove('hidden');
@@ -399,11 +413,80 @@ export class Game {
         this.start(); // Start the Loop!
     }
 
+    spawnGiftUnit() {
+        // 1. Show Visual Popup
+        const msg = document.createElement('div');
+        msg.innerText = "🎁 GIFT: REINFORCEMENTS ARRIVED! 🎁";
+        msg.className = "gift-popup";
+        document.body.appendChild(msg);
+        setTimeout(() => msg.remove(), 3000);
+
+        // 2. Play Sound (if available)
+        // this.audio.playPowerup(); // Assuming exists, otherwise skip
+
+        // 3. Spawn Unit
+        if (this.map.path.length > 0) {
+            // Spawn a strong unit (e.g. Tank or Golem)
+            // Or random? Let's go with Tank for now.
+            const unitType = 'unit_tank';
+            console.log(`[Game] Gift Spawned: ${unitType}`);
+            this.state.units.push(UnitFactory.createUnit(this, this.map.path, unitType));
+        }
+    }
+
     // Override setupWelcome for Campaign
     setupWelcome() {
         const campaignBtn = document.getElementById('campaign-btn');
         const multiplayerBtn = document.getElementById('multiplayer-btn');
         const statusText = document.querySelector('#welcome-content p') || document.querySelector('#welcome-screen p');
+
+        // New Menu Interaction Logic
+        const playBtn = document.getElementById('play-battle-btn');
+        const modePopup = document.getElementById('mode-select-popup');
+        const modeCloseBtn = document.getElementById('mode-close-btn');
+
+        if (playBtn && modePopup) {
+            playBtn.addEventListener('click', () => {
+                modePopup.classList.remove('hidden');
+            });
+        }
+
+        if (modeCloseBtn && modePopup) {
+            modeCloseBtn.addEventListener('click', () => {
+                modePopup.classList.add('hidden');
+            });
+        }
+
+        // Settings Logic
+        const settingsBtn = document.getElementById('main-settings-btn');
+        const settingsModal = document.getElementById('settings-modal');
+        const settingsClose = document.getElementById('settings-close-btn');
+        const volumeSlider = document.getElementById('volume-slider');
+
+        if (settingsBtn && settingsModal) {
+            settingsBtn.addEventListener('click', () => {
+                settingsModal.classList.remove('hidden');
+                // Sync Slider
+                if (volumeSlider && this.audio) {
+                    volumeSlider.value = Math.floor(this.audio.masterVolume * 100);
+                }
+            });
+        }
+
+        if (settingsClose && settingsModal) {
+            settingsClose.addEventListener('click', () => {
+                settingsModal.classList.add('hidden');
+            });
+        }
+
+        if (volumeSlider) {
+            volumeSlider.addEventListener('input', (e) => {
+                const vol = parseFloat(e.target.value) / 100; // 0.0 to 1.0
+                if (this.audio) {
+                    this.audio.setMasterVolume(vol);
+                }
+            });
+        }
 
         // Campaign Handler
         if (campaignBtn) {
@@ -414,7 +497,6 @@ export class Game {
 
         this.setupLevelSelect();
 
-        // Multiplayer Handler
         // Multiplayer Handler
         if (multiplayerBtn) {
             multiplayerBtn.addEventListener('click', () => {
@@ -459,8 +541,9 @@ export class Game {
 
         if (backBtn) {
             backBtn.onclick = () => {
+                const modePopup = document.getElementById('mode-select-popup');
                 levelScreen.classList.add('hidden');
-                welcomeScreen.classList.remove('hidden');
+                if (modePopup) modePopup.classList.remove('hidden');
             };
         }
 
@@ -475,9 +558,11 @@ export class Game {
     }
 
     showMultiplayerMenu() {
-        const welcomeScreen = document.getElementById('welcome-screen');
+        // Hide Mode Select, Show Multiplayer Menu
         const mpMenu = document.getElementById('multiplayer-menu');
-        if (welcomeScreen) welcomeScreen.classList.add('hidden');
+        const modePopup = document.getElementById('mode-select-popup');
+
+        if (modePopup) modePopup.classList.add('hidden');
         if (mpMenu) mpMenu.classList.remove('hidden');
     }
 
@@ -485,8 +570,15 @@ export class Game {
         const mpLocalBtn = document.getElementById('mp-local-btn');
         const mpOnlineBtn = document.getElementById('mp-online-btn');
         const mpBackBtn = document.getElementById('mp-back-btn');
-        const welcomeScreen = document.getElementById('welcome-screen');
         const mpMenu = document.getElementById('multiplayer-menu');
+
+        // Waiting Widget Elements
+        const matchWidget = document.getElementById('matchmaking-status');
+        const cancelBtn = document.getElementById('cancel-match-btn');
+        const welcomeScreen = document.getElementById('welcome-screen');
+
+        // Note: startMultiplayer usage seems fine as it re-enables welcome-screen logic if needed,
+        // but now mpMenu is INSIDE welcome-screen.
 
         if (mpLocalBtn) {
             mpLocalBtn.onclick = () => {
@@ -496,7 +588,6 @@ export class Game {
                     this.startMultiplayer('local');
                 } catch (e) {
                     console.error("[Game] Error starting local multiplayer:", e);
-                    // Show error on screen?
                     alert("Error starting game: " + e.message);
                 }
             };
@@ -516,9 +607,95 @@ export class Game {
 
         if (mpBackBtn) {
             mpBackBtn.onclick = () => {
+                const modePopup = document.getElementById('mode-select-popup');
                 console.log("[Game] Back Button Clicked");
                 mpMenu.classList.add('hidden');
-                welcomeScreen.classList.remove('hidden');
+                if (modePopup) modePopup.classList.remove('hidden');
+            };
+        }
+
+        if (cancelBtn) {
+            cancelBtn.onclick = () => {
+                console.log("[Game] Matchmaking Cancelled by User");
+                // 1. Disconnect Network
+                if (this.network) {
+                    this.network.disconnect();
+                }
+                // 2. Hide Widget
+                if (matchWidget) matchWidget.classList.add('hidden');
+
+                // 3. Reset State
+                this.gameStarted = false;
+            };
+        }
+    }
+
+    setupPauseMenu() {
+        // Pause Menu Elements
+        const pauseMenu = document.getElementById('main-menu'); // Note: ID in HTML is main-menu, confusing but matches
+        const resumeBtn = document.getElementById('resume-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const levelSelectBtn = document.getElementById('level-select-btn');
+        const exitBtn = document.getElementById('exit-btn');
+        const hudTop = document.getElementById('hud-top');
+        const cardDock = document.getElementById('card-dock');
+        const roleBtn = document.getElementById('role-switch-btn');
+        const menuBtn = document.getElementById('menu-btn');
+        const welcomeScreen = document.getElementById('welcome-screen');
+
+        if (resumeBtn) {
+            resumeBtn.onclick = () => {
+                if (pauseMenu) pauseMenu.classList.add('hidden');
+                this.paused = false;
+                this.lastTime = performance.now();
+                this.loop();
+            };
+        }
+
+        if (restartBtn) {
+            restartBtn.onclick = () => {
+                location.reload(); // Simple reload for now
+            };
+        }
+
+        if (levelSelectBtn) {
+            levelSelectBtn.onclick = () => {
+                // Exit Game and Show Level Select
+                this.gameStarted = false;
+                this.paused = true;
+                if (pauseMenu) pauseMenu.classList.add('hidden');
+
+                // Hide HUD
+                if (hudTop) hudTop.classList.add('hidden');
+                if (cardDock) cardDock.classList.add('hidden');
+                if (roleBtn) roleBtn.classList.add('hidden');
+                if (menuBtn) menuBtn.classList.add('hidden');
+
+                // Show Main Menu & Level Select
+                if (welcomeScreen) welcomeScreen.classList.remove('hidden');
+                this.showLevelSelect(); // Re-use existing helper
+            };
+        }
+
+        if (exitBtn) {
+            exitBtn.onclick = () => {
+                // Exit logic: Hide everything, Show Main Menu
+                this.gameStarted = false;
+                this.paused = true;
+                if (pauseMenu) pauseMenu.classList.add('hidden');
+
+                // Hide HUD
+                if (hudTop) hudTop.classList.add('hidden');
+                if (cardDock) cardDock.classList.add('hidden');
+                if (roleBtn) roleBtn.classList.add('hidden');
+                if (menuBtn) menuBtn.classList.add('hidden');
+
+                // Show Main Menu
+                if (welcomeScreen) welcomeScreen.classList.remove('hidden');
+
+                // Reset Mode Popup visibility if needed?
+                const modePopup = document.getElementById('mode-select-popup');
+                if (modePopup) modePopup.classList.add('hidden');
             };
         }
     }
@@ -528,31 +705,35 @@ export class Game {
         this.network.mode = mode;
         console.log(`[Game] Starting Multiplayer in ${mode} mode...`);
 
-        const statusText = document.querySelector('#welcome-screen p');
-        const welcomeScreen = document.getElementById('welcome-screen');
-        welcomeScreen.classList.remove('hidden'); // Show it back to show status
+        // HIDE Popups (Multiplayer/Mode) but KEEP Main Menu Open
+        const mpMenu = document.getElementById('multiplayer-menu');
+        const modePopup = document.getElementById('mode-select-popup');
 
-        // Update UI to "Connecting/Waiting"
-        const startBtn = document.getElementById('start-btn');
-        if (startBtn) {
-            startBtn.innerText = "CONNECTING...";
-            startBtn.disabled = true;
+        if (mpMenu) mpMenu.classList.add('hidden');
+        if (modePopup) modePopup.classList.add('hidden');
+
+        // Show "Top-Right" Waiting Widget
+        const matchWidget = document.getElementById('matchmaking-status');
+        const matchStatusText = document.getElementById('match-status-text');
+
+        if (matchWidget) {
+            matchWidget.classList.remove('hidden');
+            if (matchStatusText) matchStatusText.innerText = (mode === 'local') ? "Looking for local opponent..." : "Connecting to server...";
         }
 
-        // Initialize State FIRST (sets localReady = true)
-        // Note: this will attempt to send READY, but transport might be null yet. 
-        // That is fine, NetworkManager.sendCommand handles null transport safely.
-        // The important part is setting localReady = true so onRoleAssigned works.
-        this.initMultiplayer(startBtn, statusText);
+        // Initialize State
+        this.initMultiplayer(null, matchStatusText);
 
         // Connect NOW
         this.network.connect();
     }
 
     showLevelSelect() {
-        const welcomeScreen = document.getElementById('welcome-screen');
+        // Hide Mode Select, Show Level Select
         const levelScreen = document.getElementById('level-select-screen');
-        if (welcomeScreen) welcomeScreen.classList.add('hidden');
+        const modePopup = document.getElementById('mode-select-popup');
+
+        if (modePopup) modePopup.classList.add('hidden');
         if (levelScreen) levelScreen.classList.remove('hidden');
     }
 

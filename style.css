@@ -21,6 +21,8 @@ html {
     display: block;
     width: 100%;
     height: 100%;
+    outline: none;
+    /* Remove focus border */
 }
 
 #ui-layer {
@@ -330,7 +332,10 @@ html {
 .menu-buttons {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.5vh;
+    width: fit-content;
+    align-items: stretch;
+    margin: 0 auto;
 }
 
 /* Menu Buttons */
@@ -402,20 +407,18 @@ button {
     display: none !important;
 }
 
-/* Welcome Screen */
+/* Welcome Screen (Now mostly unused if replaced by Main Menu, but good to keep updated) */
 #welcome-screen {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: radial-gradient(circle at center, #2b32b2 0%, #1488cc 100%);
-    /* Nice blue gradient */
+    /* background: handled by .main-menu-bg */
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 200;
-    /* Above everything */
     pointer-events: auto;
 }
 
@@ -423,31 +426,40 @@ button {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1.5rem;
+    gap: 2vh;
 }
 
 .welcome-content h1 {
-    font-size: 4rem;
+    font-size: clamp(2rem, 8vw, 5rem);
     color: #ffd700;
     text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
     margin: 0;
     text-transform: uppercase;
     font-weight: 900;
-    letter-spacing: 5px;
+    letter-spacing: 0.5vw;
 }
 
 .welcome-content p {
     color: #fff;
-    font-size: 1.2rem;
+    font-size: clamp(1rem, 2vh, 1.5rem);
     opacity: 0.8;
 }
 
 .big-play-btn {
-    padding: 1rem 3rem;
-    font-size: 1.5rem;
-    letter-spacing: 2px;
+    width: 100%;
+    /* Stretch to container width */
+    min-width: 150px;
+    /* Baseline */
+    padding: 2vh 20px;
+    font-size: clamp(1rem, 3vh, 1.5rem);
+    letter-spacing: 0.2vw;
     box-shadow: 0 0 30px rgba(0, 242, 254, 0.4);
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0;
 }
 
 .big-play-btn:hover {
@@ -459,25 +471,89 @@ button {
 .welcome-buttons {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    align-items: center;
-    width: 100%;
+    gap: 1.5vh;
+    align-items: stretch;
+    /* Force children (buttons) to same width */
+    width: fit-content;
+    /* Container fits widest child */
+    margin: 0 auto;
 }
 
-/* Level Select Screen */
-#level-select-screen {
-    position: absolute;
-    top: 0;
-    left: 0;
+/* Volume Slider Styling */
+#volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
     width: 100%;
-    height: 100%;
-    background: radial-gradient(circle at center, #1a237e 0%, #0d47a1 100%);
+    height: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 5px;
+    outline: none;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ffd700;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+}
+
+#volume-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ffd700;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+}
+
+/* Common Modal / Popup Styling */
+/* Use this for Settings, Multiplayer, Level Select inner containers */
+.popup-content,
+.glass-panel {
+    width: 50vw;
+    /* Much smaller */
+    max-width: 450px;
+    padding: 2vh 2vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5vh;
+    border-radius: 15px;
+    background: rgba(20, 20, 20, 0.85);
+    /* Darker/Solid for legibility */
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.popup-content h2,
+.glass-panel h2 {
+    font-size: clamp(1.2rem, 3vh, 2rem);
+    color: #ffd700;
+    margin: 0;
+    margin-bottom: 1.5vh;
+    text-transform: uppercase;
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.popup-content button,
+.level-btn {
+    width: 100%;
+    padding: 0.8vh 1vw;
+    /* Smaller padding */
+    font-size: clamp(0.8rem, 1.8vh, 1rem);
+    /* Smaller text */
+    margin: 0.5vh 0;
+    min-height: 4vh;
+    /* Ensure touch friendliness but compact */
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 201;
-    /* Above welcome if needed, or replace it */
-    pointer-events: auto;
 }
 
 #level-list {
@@ -501,4 +577,378 @@ button {
     z-index: 205;
     /* Above welcome screen */
     pointer-events: auto;
+}
+
+/* =========================================
+   NEW MAIN MENU STYLES
+   ========================================= */
+
+#welcome-screen.main-menu-bg {
+    /* Background Image Removed - Replaced by Video */
+    background: #000 !important;
+    /* Force black, override gradient */
+    display: block;
+    /* Override default flex */
+    font-family: 'Segoe UI', serif;
+    position: absolute;
+    /* FIX: Overlay entire screen, don't flow in flex */
+    top: 0;
+    left: 0;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+}
+
+#menu-bg-video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Fill screen, remove black bars */
+    z-index: 0;
+}
+
+/* Sidebar Currency (Relocated) */
+.sidebar-currency-display {
+    display: flex;
+    justify-content: space-between;
+    width: 90%;
+    margin-bottom: 1vh;
+    /* Reduced from 2vh */
+    gap: 0.5vw;
+}
+
+.currency-item {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    /* Stack vertically */
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid #cfaa6e;
+    border-radius: 8px;
+    /* Slightly smaller radius */
+    padding: 0.5vh 0.2vw;
+    color: #ffd700;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.currency-icon {
+    font-size: clamp(0.9rem, 1.8vh, 1.2rem);
+    margin-right: 0;
+    margin-bottom: 0.2vh;
+}
+
+.currency-value {
+    font-size: clamp(0.7rem, 1.5vh, 1rem);
+}
+
+/* Sidebar */
+.menu-sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 16vw;
+    /* Even narrower */
+    min-width: 160px;
+    max-width: 260px;
+    height: 100%;
+    background: linear-gradient(to right, rgba(30, 20, 10, 0.95), rgba(45, 35, 25, 0.9));
+    border-right: 4px solid #5a4030;
+    box-shadow: 5px 0 15px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 2vh;
+    z-index: 20;
+}
+
+/* Profile Section */
+.profile-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 1vh;
+    /* Reduced from 2vh */
+    position: relative;
+    width: 100%;
+}
+
+.profile-avatar-frame {
+    width: 10vh;
+    /* Reduced from 12vh */
+    height: 10vh;
+    /* Reduced from 12vh */
+    min-width: 60px;
+    min-height: 60px;
+    border-radius: 50%;
+    border: 0.5vh solid #ffd700;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+    background: #000;
+}
+
+.profile-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.level-badge {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    /* Adjust validation */
+    background: #d32f2f;
+    color: white;
+    font-weight: bold;
+    font-size: clamp(0.7rem, 1.5vh, 1rem);
+    padding: 0.2vh 0.6vw;
+    border-radius: 50%;
+    border: 2px solid #fff;
+}
+
+.profile-details {
+    margin-top: 1vh;
+    text-align: center;
+    color: #f0e6d2;
+}
+
+.profile-name {
+    font-size: clamp(1rem, 2.5vh, 1.5rem);
+    font-weight: bold;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 0.2vh;
+    margin-bottom: 0.2vh;
+}
+
+.profile-rank {
+    font-size: clamp(0.8rem, 1.8vh, 1rem);
+    color: #aaa;
+}
+
+/* Navigation Buttons */
+.main-nav-buttons {
+    display: flex;
+    flex-direction: column;
+    width: 90%;
+    gap: 0.8vh;
+    /* Reduced from 1vh */
+    /* Reduced gap */
+}
+
+.main-menu-btn {
+    width: 100%;
+    padding: 1vh 1vw;
+    /* Reduced from 1.2vh */
+    /* Reduced padding */
+    font-size: clamp(0.8rem, 1.8vh, 1.1rem);
+    /* Reduced font size */
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #ffd700;
+    background: linear-gradient(to bottom, #5d4037, #3e2723);
+    border: 2px solid #8d6e63;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    padding-left: 1.5vw;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+    transition: transform 0.1s, filter 0.1s;
+    position: relative;
+}
+
+.main-menu-btn:hover {
+    filter: brightness(1.2);
+    transform: translateX(5px);
+}
+
+.main-menu-btn:active {
+    transform: translateX(2px) translateY(2px);
+}
+
+.main-menu-btn::after {
+    /* Icon placeholder on right */
+    content: '';
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0.8vh;
+    /* Smaller indicator */
+    height: 0.8vh;
+    background: #ffd700;
+    border-radius: 50%;
+    opacity: 0.5;
+}
+
+/* Primary "Play" Button Special Style */
+.main-menu-btn.primary-gold {
+    background: linear-gradient(to bottom, #ffeb3b, #fbc02d);
+    color: #3e2723;
+    border-color: #fffde7;
+    text-align: center;
+    padding-left: 0;
+    font-size: clamp(1rem, 2.2vh, 1.4rem);
+    /* Slightly smaller */
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+    margin-bottom: 0.8vh;
+}
+
+.main-menu-btn.primary-gold::after {
+    display: none;
+}
+
+/* Logo */
+.game-logo-container {
+    position: absolute;
+    top: 3vh;
+    left: 50%;
+    /* Center correctly */
+    transform: translateX(-50%);
+    width: 100%;
+    /* Ensure full width availability */
+    text-align: center;
+    z-index: 5;
+    pointer-events: none;
+    /* Let clicks pass through container area */
+}
+
+.main-logo-text {
+    font-size: clamp(2rem, 10vh, 5rem);
+    /* Adaptive based on Height/Min */
+    color: #e3f2fd;
+    text-transform: uppercase;
+    font-weight: 900;
+    text-shadow: 0 0 10px #0288d1, 3px 3px 0 #01579b;
+    letter-spacing: 0.5vw;
+    margin: 0;
+}
+
+/* Mode Select Popup adjustments */
+#mode-select-popup {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 300;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Settings Modal */
+#settings-modal {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 300;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Gift Popup */
+.gift-popup {
+    position: absolute;
+    top: 20%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 215, 0, 0.9);
+    color: #000;
+    font-size: 2rem;
+    font-weight: bold;
+    padding: 20px 40px;
+    border-radius: 20px;
+    border: 4px solid #fff;
+    box-shadow: 0 0 20px #ffd700;
+    z-index: 1000;
+    animation: floatUp 3s ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes floatUp {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -40%);
+    }
+
+    20% {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+
+    80% {
+        opacity: 1;
+        transform: translate(-50%, -60%);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -70%);
+    }
+}
+
+/* Level Select Modal (Nested in Main Menu) */
+#level-select-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    /* Consistent with other modals */
+    z-index: 310;
+    /* Higher than Mode popup */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+}
+
+/* Multiplayer Menu Modal (Nested in Main Menu) */
+#multiplayer-menu {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 310;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+}
+
+/* Matchmaking Loader */
+.loader {
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 3px solid #ffd700;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
