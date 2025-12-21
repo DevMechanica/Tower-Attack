@@ -24,33 +24,48 @@ export class Map {
         this.isTransitioning = false;
         this.transitionProgress = 0; // 0 = intro only, 1 = loop only
         this.transitionDuration = 1000; // 1 second crossfade
+        this.loopVideoReady = false; // Track if loop video is fully loaded
 
         // Preload and buffer the loop video (start playing but paused at first frame)
         this.loopVideo.addEventListener('loadeddata', () => {
             console.log('[Map] Loop video preloaded and ready');
+            this.loopVideoReady = true;
         });
 
         // Start crossfade transition 1 second before intro ends
         this.introVideo.addEventListener('timeupdate', () => {
             if (!this.introPlayed && this.introVideo.duration &&
                 this.introVideo.currentTime >= this.introVideo.duration - 1.0) {
-                console.log('[Map] Starting crossfade transition to loop video');
-                this.isTransitioning = true;
-                this.transitionProgress = 0;
-                this.introPlayed = true;
-                this.loopVideo.play().catch(err => console.warn('Loop video play failed:', err));
-                this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
+                // Only start transition if loop video is ready with valid dimensions
+                if (this.loopVideoReady && this.loopVideo.videoWidth > 0 && this.loopVideo.videoHeight > 0) {
+                    console.log('[Map] Starting crossfade transition to loop video');
+                    this.isTransitioning = true;
+                    this.transitionProgress = 0;
+                    this.introPlayed = true;
+                    this.loopVideo.play().catch(err => console.warn('Loop video play failed:', err));
+                    this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
+                } else {
+                    console.warn('[Map] Loop video not ready yet, waiting...');
+                }
             }
         });
 
         // Fallback: Also listen for 'ended' in case timeupdate misses it
         this.introVideo.addEventListener('ended', () => {
             if (!this.introPlayed) {
-                console.log('[Map] Intro video ended (fallback), starting crossfade');
-                this.isTransitioning = true;
-                this.transitionProgress = 0;
+                console.log('[Map] Intro video ended (fallback)');
                 this.introPlayed = true;
                 this.loopVideo.play().catch(err => console.warn('Loop video play failed:', err));
+
+                // If loop video is ready, start crossfade; otherwise switch immediately
+                if (this.loopVideoReady && this.loopVideo.videoWidth > 0 && this.loopVideo.videoHeight > 0) {
+                    console.log('[Map] Starting crossfade');
+                    this.isTransitioning = true;
+                    this.transitionProgress = 0;
+                } else {
+                    console.log('[Map] Loop video not ready, switching directly');
+                    this.background = this.loopVideo;
+                }
                 this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
             }
         });
@@ -231,6 +246,17 @@ export class Map {
 
     // Helper method to calculate dimensions for a specific video element
     getVideoDimensions(video, canvasWidth, canvasHeight) {
+        // Validate video dimensions to prevent division by zero
+        if (!video.videoWidth || !video.videoHeight || video.videoWidth === 0 || video.videoHeight === 0) {
+            console.warn('[Map] Invalid video dimensions, using fallback');
+            return {
+                offsetX: 0,
+                offsetY: 0,
+                drawWidth: canvasWidth,
+                drawHeight: canvasHeight
+            };
+        }
+
         const scaleX = canvasWidth / video.videoWidth;
         const scaleY = canvasHeight / video.videoHeight;
         const scale = Math.max(scaleX, scaleY);
@@ -287,26 +313,44 @@ export class Map {
             const canvasWidth = this.game.canvas.width;
             const canvasHeight = this.game.canvas.height;
 
-            // Calculate dimensions for intro video
-            const introDims = this.getVideoDimensions(this.introVideo, canvasWidth, canvasHeight);
+            // Calculate scale factors for both videos
+            const introScaleX = canvasWidth / this.introVideo.videoWidth;
+            const introScaleY = canvasHeight / this.introVideo.videoHeight;
+            const introScale = Math.max(introScaleX, introScaleY);
+
+            const loopScaleX = canvasWidth / this.loopVideo.videoWidth;
+            const loopScaleY = canvasHeight / this.loopVideo.videoHeight;
+            const loopScale = Math.max(loopScaleX, loopScaleY);
+
+            // Use the larger scale factor for both videos to ensure consistent coverage
+            // This prevents any zoom shift between videos
+            const unifiedScale = Math.max(introScale, loopScale);
+
+            // Calculate dimensions using unified scale
+            const introDrawWidth = this.introVideo.videoWidth * unifiedScale;
+            const introDrawHeight = this.introVideo.videoHeight * unifiedScale;
+            const introOffsetX = (canvasWidth - introDrawWidth) / 2;
+            const introOffsetY = (canvasHeight - introDrawHeight) / 2;
+
+            const loopDrawWidth = this.loopVideo.videoWidth * unifiedScale;
+            const loopDrawHeight = this.loopVideo.videoHeight * unifiedScale;
+            const loopOffsetX = (canvasWidth - loopDrawWidth) / 2;
+            const loopOffsetY = (canvasHeight - loopDrawHeight) / 2;
 
             // Draw intro video with fading alpha
             ctx.globalAlpha = 1 - this.transitionProgress;
             ctx.drawImage(
                 this.introVideo,
                 0, 0, this.introVideo.videoWidth, this.introVideo.videoHeight,
-                introDims.offsetX, introDims.offsetY, introDims.drawWidth, introDims.drawHeight
+                introOffsetX, introOffsetY, introDrawWidth, introDrawHeight
             );
-
-            // Calculate dimensions for loop video
-            const loopDims = this.getVideoDimensions(this.loopVideo, canvasWidth, canvasHeight);
 
             // Draw loop video with increasing alpha
             ctx.globalAlpha = this.transitionProgress;
             ctx.drawImage(
                 this.loopVideo,
                 0, 0, this.loopVideo.videoWidth, this.loopVideo.videoHeight,
-                loopDims.offsetX, loopDims.offsetY, loopDims.drawWidth, loopDims.drawHeight
+                loopOffsetX, loopOffsetY, loopDrawWidth, loopDrawHeight
             );
 
             // Reset alpha
