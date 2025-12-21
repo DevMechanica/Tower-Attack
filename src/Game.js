@@ -713,6 +713,19 @@ export class Game {
     initCampaign(selectedConfig) {
         this.gamemode = 'campaign';
 
+        // Clear previous game state
+        this.state.units = [];
+        this.state.towers = [];
+        this.state.projectiles = [];
+        this.state.time = 0;
+        this.enemyBase = null;
+
+        // Reset all tower slots to unoccupied
+        this.map.towerSlots.forEach(slot => slot.occupied = false);
+
+        // Reset video sequence to ensure clean state
+        this.map.resetVideoSequence();
+
         const statusText = document.querySelector('#welcome-screen p');
         if (statusText) statusText.innerText = "Waiting for other player to press play...";
 
@@ -830,6 +843,10 @@ export class Game {
         // Set display size (CSS pixels)
         this.canvas.style.width = `${displayWidth}px`;
         this.canvas.style.height = `${displayHeight}px`;
+
+        // CRITICAL: Reset transform before scaling to prevent cumulative scaling
+        // Setting canvas width/height already resets the transform, but we do it explicitly for clarity
+        this.renderer.ctx.setTransform(1, 0, 0, 1, 0, 0);
 
         // Scale all drawing operations
         this.renderer.ctx.scale(dpr, dpr);

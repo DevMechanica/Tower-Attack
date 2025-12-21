@@ -43,7 +43,7 @@ export class Map {
                     this.transitionProgress = 0;
                     this.introPlayed = true;
                     this.loopVideo.play().catch(err => console.warn('Loop video play failed:', err));
-                    this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
+                    // Don't update dimensions here - causes zoom on mobile
                 } else {
                     console.warn('[Map] Loop video not ready yet, waiting...');
                 }
@@ -66,7 +66,7 @@ export class Map {
                     console.log('[Map] Loop video not ready, switching directly');
                     this.background = this.loopVideo;
                 }
-                this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
+                // Don't update dimensions here - causes zoom on mobile
             }
         });
 
@@ -138,7 +138,8 @@ export class Map {
             // Check if intro video is loaded and ready
             if (this.introVideo.readyState >= 2) {
                 this.loaded = true;
-                this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
+                // Use window dimensions (not canvas dimensions which include DPR)
+                this.updateDimensions(window.innerWidth, window.innerHeight);
             }
         };
 
@@ -160,6 +161,10 @@ export class Map {
         this.scale = 1;
         this.offsetX = 0;
         this.offsetY = 0;
+
+        // Store display dimensions (not canvas dimensions which include DPR)
+        this.displayWidth = 0;
+        this.displayHeight = 0;
 
         // Camera vertical offset to show more of the top (portal area)
         this.cameraOffsetY = 0; // No offset - fill entire screen
@@ -230,6 +235,10 @@ export class Map {
     updateDimensions(width, height) {
         if (!this.loaded) return;
 
+        // Store display dimensions for use in render
+        this.displayWidth = width;
+        this.displayHeight = height;
+
         // Use "cover" strategy to fill the entire viewport
         // This will crop the video edges if needed but ensures full coverage (like CSS background-size: cover)
 
@@ -282,10 +291,18 @@ export class Map {
     resetVideoSequence() {
         this.introPlayed = false;
         this.background = this.introVideo;
+        this.isTransitioning = false; // Reset transition state
+        this.transitionProgress = 0; // Reset progress
         this.introVideo.currentTime = 0;
         this.loopVideo.pause();
         this.loopVideo.currentTime = 0;
         this.introVideo.play().catch(err => console.warn('Intro restart failed:', err));
+
+        // Only update dimensions if video has valid dimensions
+        // Use stored display dimensions (not canvas dimensions which include DPR)
+        if (this.introVideo.videoWidth > 0 && this.introVideo.videoHeight > 0 && this.displayWidth > 0) {
+            this.updateDimensions(this.displayWidth, this.displayHeight);
+        }
     }
 
     update(deltaTime) {
@@ -310,16 +327,17 @@ export class Map {
 
         // Draw Background Video with crossfade transition
         if (this.isTransitioning) {
-            const canvasWidth = this.game.canvas.width;
-            const canvasHeight = this.game.canvas.height;
+            // Use display dimensions (not canvas dimensions which include DPR)
+            const displayWidth = this.displayWidth || window.innerWidth;
+            const displayHeight = this.displayHeight || window.innerHeight;
 
             // Calculate scale factors for both videos
-            const introScaleX = canvasWidth / this.introVideo.videoWidth;
-            const introScaleY = canvasHeight / this.introVideo.videoHeight;
+            const introScaleX = displayWidth / this.introVideo.videoWidth;
+            const introScaleY = displayHeight / this.introVideo.videoHeight;
             const introScale = Math.max(introScaleX, introScaleY);
 
-            const loopScaleX = canvasWidth / this.loopVideo.videoWidth;
-            const loopScaleY = canvasHeight / this.loopVideo.videoHeight;
+            const loopScaleX = displayWidth / this.loopVideo.videoWidth;
+            const loopScaleY = displayHeight / this.loopVideo.videoHeight;
             const loopScale = Math.max(loopScaleX, loopScaleY);
 
             // Use the larger scale factor for both videos to ensure consistent coverage
@@ -329,13 +347,13 @@ export class Map {
             // Calculate dimensions using unified scale
             const introDrawWidth = this.introVideo.videoWidth * unifiedScale;
             const introDrawHeight = this.introVideo.videoHeight * unifiedScale;
-            const introOffsetX = (canvasWidth - introDrawWidth) / 2;
-            const introOffsetY = (canvasHeight - introDrawHeight) / 2;
+            const introOffsetX = (displayWidth - introDrawWidth) / 2;
+            const introOffsetY = (displayHeight - introDrawHeight) / 2;
 
             const loopDrawWidth = this.loopVideo.videoWidth * unifiedScale;
             const loopDrawHeight = this.loopVideo.videoHeight * unifiedScale;
-            const loopOffsetX = (canvasWidth - loopDrawWidth) / 2;
-            const loopOffsetY = (canvasHeight - loopDrawHeight) / 2;
+            const loopOffsetX = (displayWidth - loopDrawWidth) / 2;
+            const loopOffsetY = (displayHeight - loopDrawHeight) / 2;
 
             // Draw intro video with fading alpha
             ctx.globalAlpha = 1 - this.transitionProgress;
