@@ -4,34 +4,80 @@ export class Map {
 
         // Create two video elements: intro (plays once) and loop (plays forever)
         this.introVideo = document.createElement('video');
-        this.introVideo.src = 'assets/maps/Default/2dd77380-cce6-4b16-a8ca-25a0c97343cf.mp4';
+        this.introVideo.src = 'assets/maps/Default/download (15).mp4';
         this.introVideo.muted = true;
         this.introVideo.playsInline = true;
         this.introVideo.loop = false; // Play once only
 
         this.loopVideo = document.createElement('video');
-        this.loopVideo.src = 'assets/maps/Default/a19be687-ec10-421d-8d5a-556fcd208e55.mp4';
+        this.loopVideo.src = 'assets/maps/Default/download (17).mp4';
         this.loopVideo.muted = true;
         this.loopVideo.playsInline = true;
         this.loopVideo.loop = true; // Loop forever
+        this.loopVideo.preload = 'auto'; // Preload the video to avoid flash
 
         // Track which video is currently active
         this.background = this.introVideo; // Start with intro
         this.introPlayed = false;
 
-        // When intro ends, switch to loop video
+        // Crossfade transition state
+        this.isTransitioning = false;
+        this.transitionProgress = 0; // 0 = intro only, 1 = loop only
+        this.transitionDuration = 1000; // 1 second crossfade
+        this.loopVideoReady = false; // Track if loop video is fully loaded
+
+        // Preload and buffer the loop video (start playing but paused at first frame)
+        this.loopVideo.addEventListener('loadeddata', () => {
+            console.log('[Map] Loop video preloaded and ready');
+            this.loopVideoReady = true;
+        });
+
+        // Start crossfade transition 1 second before intro ends
+        this.introVideo.addEventListener('timeupdate', () => {
+            if (!this.introPlayed && this.introVideo.duration &&
+                this.introVideo.currentTime >= this.introVideo.duration - 1.0) {
+                // Only start transition if loop video is ready with valid dimensions
+                if (this.loopVideoReady && this.loopVideo.videoWidth > 0 && this.loopVideo.videoHeight > 0) {
+                    console.log('[Map] Starting crossfade transition to loop video');
+                    this.isTransitioning = true;
+                    this.transitionProgress = 0;
+                    this.introPlayed = true;
+                    this.loopVideo.play().catch(err => console.warn('Loop video play failed:', err));
+                    this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
+                } else {
+                    console.warn('[Map] Loop video not ready yet, waiting...');
+                }
+            }
+        });
+
+        // Fallback: Also listen for 'ended' in case timeupdate misses it
         this.introVideo.addEventListener('ended', () => {
-            console.log('[Map] Intro video ended, switching to loop video');
-            this.background = this.loopVideo;
-            this.introPlayed = true;
-            this.loopVideo.play().catch(err => console.warn('Loop video play failed:', err));
-            this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
+            if (!this.introPlayed) {
+                console.log('[Map] Intro video ended (fallback)');
+                this.introPlayed = true;
+                this.loopVideo.play().catch(err => console.warn('Loop video play failed:', err));
+
+                // If loop video is ready, start crossfade; otherwise switch immediately
+                if (this.loopVideoReady && this.loopVideo.videoWidth > 0 && this.loopVideo.videoHeight > 0) {
+                    console.log('[Map] Starting crossfade');
+                    this.isTransitioning = true;
+                    this.transitionProgress = 0;
+                } else {
+                    console.log('[Map] Loop video not ready, switching directly');
+                    this.background = this.loopVideo;
+                }
+                this.updateDimensions(this.game.canvas.width, this.game.canvas.height);
+            }
         });
 
         // Start playing the intro video
         this.introVideo.play().catch(err => {
             console.warn('Intro video autoplay failed:', err);
         });
+
+        // Start buffering the loop video immediately (but don't show it yet)
+        // This ensures it's ready when the intro ends
+        this.loopVideo.load();
 
         // Asset Loading
         this.assets = {};
@@ -116,45 +162,36 @@ export class Map {
         this.offsetY = 0;
 
         // Camera vertical offset to show more of the top (portal area)
-        this.cameraOffsetY = 20; // Shift down by 100px to reveal top portal
+        this.cameraOffsetY = 0; // No offset - fill entire screen
 
         // Waypoints provided by user
         this.path = [
-            { x: 131, y: 147 },
-            { x: 317, y: 353 },
-            { x: 301, y: 456 },
-            { x: 153, y: 651 },
-            { x: 178, y: 810 },
-            { x: 301, y: 888 },
-            { x: 459, y: 826 },
-            { x: 604, y: 888 },
-            { x: 715, y: 785 },
-            { x: 615, y: 520 },
-            { x: 640, y: 309 },
-            { x: 771, y: 184 },
-            { x: 918, y: 306 },
-            { x: 824, y: 501 },
-            { x: 757, y: 643 },
-            { x: 915, y: 849 }
+            { x: 393, y: 309 },
+            { x: 505, y: 381 },
+            { x: 606, y: 441 },
+            { x: 525, y: 553 },
+            { x: 391, y: 634 },
+            { x: 383, y: 722 },
+            { x: 483, y: 834 },
+            { x: 657, y: 864 },
+            { x: 839, y: 794 },
+            { x: 971, y: 874 },
+            { x: 1214, y: 806 },
+            { x: 1299, y: 723 },
+            { x: 1453, y: 772 },
+            { x: 1561, y: 836 }
         ];
 
         // Tower Slots provided by user (Defender build spots)
         this.towerSlots = [
-            { x: 486, y: 532, occupied: false }, // Updated per user debug
-            { x: 668, y: 417, occupied: false },
-            { x: 726, y: 334, occupied: false },
-            { x: 779, y: 262, occupied: false },
-            { x: 840, y: 339, occupied: false },
-            { x: 768, y: 434, occupied: false },
-            { x: 712, y: 526, occupied: false },
-            { x: 857, y: 634, occupied: false },
-            { x: 893, y: 551, occupied: false },
-            { x: 779, y: 810, occupied: false },
-            { x: 634, y: 799, occupied: false },
-            { x: 467, y: 715, occupied: false },
-            { x: 334, y: 754, occupied: false },
-            { x: 250, y: 654, occupied: false },
-            { x: 534, y: 652, occupied: false } // New slot added per user request
+            { x: 1079.7891036906854, y: 782.390158172232, occupied: false },
+            { x: 1204.639718804921, y: 689.0333919156415, occupied: false },
+            { x: 1465.5887521968366, y: 440.45694200351494, occupied: false },
+            { x: 1348.6115992970124, y: 350.47451669595785, occupied: false },
+            { x: 1085.4130052724079, y: 451.7047451669596, occupied: false },
+            { x: 1484.7100175746925, y: 648.5413005272408, occupied: false },
+            { x: 1335.1142355008787, y: 843.128295254833, occupied: false },
+            { x: 1627.5571177504394, y: 543.9367311072057, occupied: false }
         ];
     }
 
@@ -207,6 +244,32 @@ export class Map {
         this.offsetY = (height - this.drawHeight) / 2;
     }
 
+    // Helper method to calculate dimensions for a specific video element
+    getVideoDimensions(video, canvasWidth, canvasHeight) {
+        // Validate video dimensions to prevent division by zero
+        if (!video.videoWidth || !video.videoHeight || video.videoWidth === 0 || video.videoHeight === 0) {
+            console.warn('[Map] Invalid video dimensions, using fallback');
+            return {
+                offsetX: 0,
+                offsetY: 0,
+                drawWidth: canvasWidth,
+                drawHeight: canvasHeight
+            };
+        }
+
+        const scaleX = canvasWidth / video.videoWidth;
+        const scaleY = canvasHeight / video.videoHeight;
+        const scale = Math.max(scaleX, scaleY);
+
+        const drawWidth = video.videoWidth * scale;
+        const drawHeight = video.videoHeight * scale;
+
+        const offsetX = (canvasWidth - drawWidth) / 2;
+        const offsetY = (canvasHeight - drawHeight) / 2;
+
+        return { offsetX, offsetY, drawWidth, drawHeight };
+    }
+
     // Convert screen coordinate to game background coordinate
     getGameCoordinates(clientX, clientY) {
         if (!this.loaded) return null;
@@ -226,7 +289,16 @@ export class Map {
     }
 
     update(deltaTime) {
-        // Update entities
+        // Update crossfade transition
+        if (this.isTransitioning) {
+            this.transitionProgress += deltaTime / this.transitionDuration;
+            if (this.transitionProgress >= 1) {
+                this.transitionProgress = 1;
+                this.isTransitioning = false;
+                this.background = this.loopVideo; // Switch to loop as primary
+                console.log('[Map] Crossfade complete');
+            }
+        }
     }
 
     render(ctx) {
@@ -236,11 +308,60 @@ export class Map {
             return;
         }
 
-        // Draw Background Video with vertical offset to show top portal
-        ctx.drawImage(
-            this.background,
-            0, 0, this.background.videoWidth, this.background.videoHeight,
-            this.offsetX, this.offsetY + this.cameraOffsetY, this.drawWidth, this.drawHeight
-        );
+        // Draw Background Video with crossfade transition
+        if (this.isTransitioning) {
+            const canvasWidth = this.game.canvas.width;
+            const canvasHeight = this.game.canvas.height;
+
+            // Calculate scale factors for both videos
+            const introScaleX = canvasWidth / this.introVideo.videoWidth;
+            const introScaleY = canvasHeight / this.introVideo.videoHeight;
+            const introScale = Math.max(introScaleX, introScaleY);
+
+            const loopScaleX = canvasWidth / this.loopVideo.videoWidth;
+            const loopScaleY = canvasHeight / this.loopVideo.videoHeight;
+            const loopScale = Math.max(loopScaleX, loopScaleY);
+
+            // Use the larger scale factor for both videos to ensure consistent coverage
+            // This prevents any zoom shift between videos
+            const unifiedScale = Math.max(introScale, loopScale);
+
+            // Calculate dimensions using unified scale
+            const introDrawWidth = this.introVideo.videoWidth * unifiedScale;
+            const introDrawHeight = this.introVideo.videoHeight * unifiedScale;
+            const introOffsetX = (canvasWidth - introDrawWidth) / 2;
+            const introOffsetY = (canvasHeight - introDrawHeight) / 2;
+
+            const loopDrawWidth = this.loopVideo.videoWidth * unifiedScale;
+            const loopDrawHeight = this.loopVideo.videoHeight * unifiedScale;
+            const loopOffsetX = (canvasWidth - loopDrawWidth) / 2;
+            const loopOffsetY = (canvasHeight - loopDrawHeight) / 2;
+
+            // Draw intro video with fading alpha
+            ctx.globalAlpha = 1 - this.transitionProgress;
+            ctx.drawImage(
+                this.introVideo,
+                0, 0, this.introVideo.videoWidth, this.introVideo.videoHeight,
+                introOffsetX, introOffsetY, introDrawWidth, introDrawHeight
+            );
+
+            // Draw loop video with increasing alpha
+            ctx.globalAlpha = this.transitionProgress;
+            ctx.drawImage(
+                this.loopVideo,
+                0, 0, this.loopVideo.videoWidth, this.loopVideo.videoHeight,
+                loopOffsetX, loopOffsetY, loopDrawWidth, loopDrawHeight
+            );
+
+            // Reset alpha
+            ctx.globalAlpha = 1;
+        } else {
+            // Draw current background video normally
+            ctx.drawImage(
+                this.background,
+                0, 0, this.background.videoWidth, this.background.videoHeight,
+                this.offsetX, this.offsetY, this.drawWidth, this.drawHeight
+            );
+        }
     }
 }

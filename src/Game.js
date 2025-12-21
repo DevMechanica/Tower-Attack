@@ -665,9 +665,24 @@ export class Game {
     // (Adapted from old Game.js)
 
     resize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-        if (this.map) this.map.updateDimensions(this.canvas.width, this.canvas.height);
+        // Account for high-DPI displays (Retina, modern phones)
+        const dpr = window.devicePixelRatio || 1;
+        const displayWidth = window.innerWidth;
+        const displayHeight = window.innerHeight;
+
+        // Set actual canvas size (accounting for pixel ratio)
+        this.canvas.width = displayWidth * dpr;
+        this.canvas.height = displayHeight * dpr;
+
+        // Set display size (CSS pixels)
+        this.canvas.style.width = `${displayWidth}px`;
+        this.canvas.style.height = `${displayHeight}px`;
+
+        // Scale all drawing operations
+        this.renderer.ctx.scale(dpr, dpr);
+
+        // Update map with display dimensions (not canvas dimensions)
+        if (this.map) this.map.updateDimensions(displayWidth, displayHeight);
     }
 
     // ... UI Setup methods ...
