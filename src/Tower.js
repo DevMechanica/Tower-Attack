@@ -21,6 +21,8 @@ export class Tower {
         this.health = 200; // Towers can be destroyed too!
         this.maxHealth = 200;
         this.recoil = 0;
+        this.disabled = false; // Can be disabled by spiders
+        this.attachedSpiders = []; // Track attached spider units
 
         // Animation State
         this.isAttacking = false;
@@ -137,25 +139,28 @@ export class Tower {
             this.cooldown -= deltaTime;
         }
 
-        // Target closest unit
-        let target = null;
-        let minDist = Infinity;
+        // Skip targeting and shooting if disabled by spider
+        if (!this.disabled) {
+            // Target closest unit
+            let target = null;
+            let minDist = Infinity;
 
-        this.game.units.forEach(unit => {
-            if (!unit.active) return;
-            const dx = unit.x - this.x;
-            const dy = unit.y - this.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+            this.game.units.forEach(unit => {
+                if (!unit.active) return;
+                const dx = unit.x - this.x;
+                const dy = unit.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
 
-            if (dist < this.range && dist < minDist) {
-                minDist = dist;
-                target = unit;
+                if (dist < this.range && dist < minDist) {
+                    minDist = dist;
+                    target = unit;
+                }
+            });
+
+            if (target && this.cooldown <= 0) {
+                this.shoot(target);
+                this.cooldown = this.maxCooldown;
             }
-        });
-
-        if (target && this.cooldown <= 0) {
-            this.shoot(target);
-            this.cooldown = this.maxCooldown;
         }
 
         // Idle Animation Update (Only if not attacking)

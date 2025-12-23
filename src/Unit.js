@@ -30,6 +30,7 @@ export class Unit {
         this.animTimer = 0;
         this.animSpeed = 0.1;
         this.attackAnim = 0;
+        this.direction = 'right'; // Track movement direction for directional sprites
 
         // Combat Cooldown
         this.cooldown = 0;
@@ -71,6 +72,11 @@ export class Unit {
             this.maxHealth = 125;
             this.speed = 130; // Increased
             this.radius = 15;
+        } else if (this.type === 'unit_spider') {
+            this.health = 200;
+            this.maxHealth = 200;
+            this.speed = 100;
+            this.radius = 18;
         }
     }
 
@@ -123,6 +129,18 @@ export class Unit {
             const moveY = (dy / distance) * this.speed * (deltaTime / 1000);
             this.x += moveX;
             this.y += moveY;
+
+            // Update direction based on primary movement axis
+            const absDx = Math.abs(dx);
+            const absDy = Math.abs(dy);
+
+            if (absDx > absDy) {
+                // Horizontal movement is dominant
+                this.direction = dx > 0 ? 'right' : 'left';
+            } else if (absDy > 1) {
+                // Vertical movement is dominant
+                this.direction = dy > 0 ? 'down' : 'up';
+            }
         }
     }
 
@@ -189,6 +207,24 @@ export class Unit {
         if (this.type === 'unit_basic' || this.type === 'unit_crawler') {
             assetName = 'soldier_walk';
             isSequence = true;
+        } else if (this.type === 'unit_spider') {
+            // Check if spider is attaching/attached (SpiderUnit specific state)
+            if (this.state === 'ATTACHING' || this.state === 'ATTACHED') {
+                assetName = 'spider_attach';
+                isSequence = true;
+            } else {
+                // Use 4-directional animation for spider walking
+                if (this.direction === 'right') {
+                    assetName = 'spider_walk_right';
+                } else if (this.direction === 'up') {
+                    assetName = 'spider_walk_up';
+                } else if (this.direction === 'down') {
+                    assetName = 'spider_walk'; // Use default for down
+                } else {
+                    assetName = 'spider_walk'; // Default left
+                }
+                isSequence = true;
+            }
         } else if (this.type === 'unit_tank') {
             assetName = 'unit_tank';
         } else if (this.type === 'unit_golem') {
@@ -215,6 +251,7 @@ export class Unit {
             let drawSize = 60 * scale;
             if (this.type === 'unit_tank') drawSize = 80 * scale;
             if (this.type === 'unit_golem') drawSize = 100 * scale;
+            if (this.type === 'unit_spider') drawSize = 70 * scale;
 
             // Tint for crawler to distinguish? Or just use same sprite
             // if (this.type === 'unit_crawler') ctx.filter = 'hue-rotate(90deg)'; 
@@ -371,6 +408,146 @@ export class CrawlerUnit extends Unit {
             const moveY = (dy / distance) * this.speed * (deltaTime / 1000);
             this.x += moveX;
             this.y += moveY;
+
+            // Update direction based on primary movement axis
+            const absDx = Math.abs(dx);
+            const absDy = Math.abs(dy);
+
+            if (absDx > absDy) {
+                this.direction = dx > 0 ? 'right' : 'left';
+            } else if (absDy > 1) {
+                this.direction = dy > 0 ? 'down' : 'up';
+            }
+        }
+    }
+}
+
+export class SpiderUnit extends Unit {
+    // "Spider": Attaches to towers, disables them, and drains their health
+    constructor(game, path, type) {
+        super(game, path, type);
+
+        this.attachedTo = null; // Tower reference when attached
+        this.drainRate = 10; // HP per second drained from tower
+        this.attachRange = 150; // Detection range for towers
+        this.state = 'MOVING'; // MOVING, ATTACHING, ATTACHED
+        this.attachAnimTimer = 0;
+        this.attachAnimDuration = 300; // ms for 2-frame animation
+    }
+
+    updateBehavior(deltaTime) {
+        if (this.state === 'ATTACHED') {
+            // Stay attached and drain tower health
+            if (this.attachedTo && this.attachedTo.active) {
+                // Position spider on tower
+                this.x = this.attachedTo.x;
+                this.y = this.attachedTo.y;
+
+                // Drain tower health
+                const drainAmount = (this.drainRate * deltaTime) / 1000;
+                this.attachedTo.takeDamage(drainAmount);
+
+                // Keep tower disabled
+                this.attachedTo.disabled = true;
+            } else {
+                // Tower destroyed or inactive, detach
+                this.detach();
+                this.state = 'MOVING';
+            }
+            return;
+        }
+
+        if (this.state === 'ATTACHING') {
+            // Play attaching animation
+            this.attachAnimTimer += deltaTime;
+            if (this.attachAnimTimer >= this.attachAnimDuration) {
+                // Animation complete, fully attach
+                this.state = 'ATTACHED';
+                this.attachAnimTimer = 0;
+                if (this.attachedTo) {
+                    this.attachedTo.attachedSpiders.push(this);
+                }
+            }
+            return;
+        }
+
+        // MOVING state: find and approach towers
+        let targetTower = this.findNearestTower();
+
+        if (targetTower) {
+            // Move toward tower
+            const dx = targetTower.x - this.x;
+            const dy = targetTower.y - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < 20) {
+                // Close enough, start attaching
+                this.state = 'ATTACHING';
+                this.attachedTo = targetTower;
+                this.attachAnimTimer = 0;
+            } else {
+                // Move toward tower
+                const moveX = (dx / distance) * this.speed * (deltaTime / 1000);
+                const moveY = (dy / distance) * this.speed * (deltaTime / 1000);
+                this.x += moveX;
+                this.y += moveY;
+
+                // Update direction for walk animation
+                const absDx = Math.abs(dx);
+                const absDy = Math.abs(dy);
+                if (absDx > absDy) {
+                    this.direction = dx > 0 ? 'right' : 'left';
+                } else if (absDy > 1) {
+                    this.direction = dy > 0 ? 'down' : 'up';
+                }
+            }
+        } else {
+            // No towers nearby, continue along path (fallback)
+            this.moveAlongPath(deltaTime);
+        }
+    }
+
+    findNearestTower() {
+        let nearestTower = null;
+        let minDist = Infinity;
+
+        this.game.towers.forEach(tower => {
+            // Don't target base or already attached towers
+            if (!tower.active || tower.type === 'base_castle' || tower.disabled) return;
+
+            const dist = Math.sqrt((tower.x - this.x) ** 2 + (tower.y - this.y) ** 2);
+            if (dist < this.attachRange && dist < minDist) {
+                minDist = dist;
+                nearestTower = tower;
+            }
+        });
+
+        return nearestTower;
+    }
+
+    detach() {
+        if (this.attachedTo) {
+            // Remove spider from tower's list
+            const index = this.attachedTo.attachedSpiders.indexOf(this);
+            if (index > -1) {
+                this.attachedTo.attachedSpiders.splice(index, 1);
+            }
+
+            // Re-enable tower if no more spiders attached
+            if (this.attachedTo.attachedSpiders.length === 0) {
+                this.attachedTo.disabled = false;
+            }
+
+            this.attachedTo = null;
+        }
+    }
+
+    takeDamage(amount) {
+        super.takeDamage(amount);
+
+        // If killed while attached, detach and re-enable tower
+        if (!this.active && this.attachedTo) {
+            this.detach();
         }
     }
 }
@@ -394,6 +571,9 @@ export class UnitFactory {
 
             case 'unit_crawler':
                 return new CrawlerUnit(game, path, type);
+
+            case 'unit_spider':
+                return new SpiderUnit(game, path, type);
 
             default:
                 console.warn(`Unknown unit type ${type}, defaulting to Attacker.`);

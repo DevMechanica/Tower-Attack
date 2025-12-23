@@ -96,6 +96,10 @@ export class Map {
         // Load Animations
         this.loadAnimation('soldier_walk', 'assets/units/soldier/soldier_walk', 7, 'jpg');
         this.loadAnimation('soldier_attack', 'assets/units/soldier/soldier_attack', 4, 'jpg');
+        this.loadAnimation('spider_walk', 'assets/units/Spider/spider_walk', 5, 'png');
+        this.loadAnimation('spider_walk_right', 'assets/units/Spider/Right_Movement/spider_walk_right', 5, 'png');
+        this.loadAnimation('spider_walk_up', 'assets/units/Spider/Up_Movement/spider_walk_up', 6, 'png');
+        this.loadAnimation('spider_attach', 'assets/units/Spider/Spider_Attaching/spider_attach', 2, 'png');
 
         // Tesla Tower Animation
         // Files are TeslaAnim1-removebg-preview.png to TeslaAnim5-removebg-preview.png

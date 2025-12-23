@@ -975,7 +975,8 @@ export class Game {
                 { id: 'unit_golem', label: 'Golem', img: 'unit_golem.png', cost: 60 },
                 { id: 'unit_mecha_dino', label: 'Dino', img: 'assets/units/mecha_dino/mecha_dino.png', cost: 100 },
                 { id: 'unit_saber_rider', label: 'Rider', img: 'assets/units/saber_rider.png', cost: 50 },
-                { id: 'unit_crawler', label: 'Crawler', img: 'assets/units/soldier/Main_soldier.png', cost: 15 }
+                { id: 'unit_crawler', label: 'Crawler', img: 'assets/units/soldier/Main_soldier.png', cost: 15 },
+                { id: 'unit_spider', label: 'Spider', img: 'assets/units/Spider/spider_walk_01.png', cost: 20 }
             ]
             : [
                 { id: 'tower_cannon', label: 'Cannon', img: 'assets/towers/Main_tower.png', cost: TowerCosts['tower_cannon'] },
