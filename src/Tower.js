@@ -335,14 +335,38 @@ export class Tower {
 
         // Health Bar
         if (this.health < this.maxHealth) {
-            const barWidth = 40 * scale;
-            const barHeight = 4 * scale;
-            const barY = screenY - (40 * scale); // Above tower
+            const barWidth = 45 * scale;
+            const barHeight = 6 * scale;
+            const barY = screenY - (45 * scale); // Above tower
 
-            ctx.fillStyle = 'red';
+            // Border
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1.5 * scale;
+            ctx.strokeRect(screenX - barWidth / 2 - 1, barY - 1, barWidth + 2, barHeight + 2);
+
+            // Background
+            ctx.fillStyle = '#2a2a2a';
             ctx.fillRect(screenX - barWidth / 2, barY, barWidth, barHeight);
-            ctx.fillStyle = '#0f0';
-            ctx.fillRect(screenX - barWidth / 2, barY, barWidth * (this.health / this.maxHealth), barHeight);
+
+            // Health fill with gradient
+            const healthPercent = this.health / this.maxHealth;
+            const fillWidth = barWidth * healthPercent;
+
+            // Create gradient based on health
+            const gradient = ctx.createLinearGradient(screenX - barWidth / 2, barY, screenX - barWidth / 2 + fillWidth, barY);
+            if (healthPercent > 0.6) {
+                gradient.addColorStop(0, '#22d3ee'); // Cyan
+                gradient.addColorStop(1, '#0891b2');
+            } else if (healthPercent > 0.3) {
+                gradient.addColorStop(0, '#fb923c'); // Orange
+                gradient.addColorStop(1, '#ea580c');
+            } else {
+                gradient.addColorStop(0, '#ff6b6b'); // Bright red
+                gradient.addColorStop(1, '#dc2626');
+            }
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(screenX - barWidth / 2, barY, fillWidth, barHeight);
         }
     }
 

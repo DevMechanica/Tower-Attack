@@ -273,13 +273,37 @@ export class Unit {
 
         // Health Bar
         const barWidth = 30 * map.scale;
-        const barHeight = 4 * map.scale;
+        const barHeight = 5 * map.scale;
         const barY = screenY - (this.radius * map.scale) - 20 * map.scale;
 
-        ctx.fillStyle = 'red';
+        // Border
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1 * map.scale;
+        ctx.strokeRect(screenX - barWidth / 2 - 1, barY - 1, barWidth + 2, barHeight + 2);
+
+        // Background
+        ctx.fillStyle = '#333';
         ctx.fillRect(screenX - barWidth / 2, barY, barWidth, barHeight);
-        ctx.fillStyle = '#0f0';
-        ctx.fillRect(screenX - barWidth / 2, barY, barWidth * (this.health / this.maxHealth), barHeight);
+
+        // Health fill with gradient
+        const healthPercent = this.health / this.maxHealth;
+        const fillWidth = barWidth * healthPercent;
+
+        // Create gradient based on health
+        const gradient = ctx.createLinearGradient(screenX - barWidth / 2, barY, screenX - barWidth / 2 + fillWidth, barY);
+        if (healthPercent > 0.6) {
+            gradient.addColorStop(0, '#4ade80'); // Green
+            gradient.addColorStop(1, '#22c55e');
+        } else if (healthPercent > 0.3) {
+            gradient.addColorStop(0, '#fbbf24'); // Yellow
+            gradient.addColorStop(1, '#f59e0b');
+        } else {
+            gradient.addColorStop(0, '#f87171'); // Red
+            gradient.addColorStop(1, '#ef4444');
+        }
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(screenX - barWidth / 2, barY, fillWidth, barHeight);
     }
 
     // Serialization for Network/Save
