@@ -263,6 +263,10 @@ export class Tower {
                 assetName = 'tower_tesla';
             }
         }
+        // Ice Towers (3 types, no animations)
+        if (this.type === 'tower_pulse_cannon') assetName = 'tower_pulse_cannon';
+        if (this.type === 'tower_barracks') assetName = 'tower_barracks';
+        if (this.type === 'tower_ice') assetName = 'tower_ice';
 
         // if (this.recoil > 0 && this.type === 'tower_cannon') {
         //    assetName = 'Main_tower_attack';
@@ -277,13 +281,29 @@ export class Tower {
             sprite = sprite[this.currentFrame];
         } else if (this.isIdleAnimating && this.type === 'tower_mage' && Array.isArray(sprite)) {
             sprite = sprite[this.idleFrame];
+        } else if (this.isAttacking && this.type === 'tower_ice' && Array.isArray(sprite)) {
+            sprite = sprite[this.currentFrame];
         }
 
         // Sprite Drawing
         if (sprite && sprite.complete) {
-            // Apply recoil to size
+            // Calculate size maintaining aspect ratio
             const baseSize = 200 * scale;
-            const drawSize = baseSize * (1 + this.recoil);
+            const scaledSize = baseSize * (1 + this.recoil);
+
+            // Maintain aspect ratio
+            const aspectRatio = sprite.width / sprite.height;
+            let drawWidth, drawHeight;
+
+            if (aspectRatio > 1) {
+                // Width is larger - fit to width
+                drawWidth = scaledSize;
+                drawHeight = scaledSize / aspectRatio;
+            } else {
+                // Height is larger or square - fit to height
+                drawHeight = scaledSize;
+                drawWidth = scaledSize * aspectRatio;
+            }
 
             // Apply Visual Offset
             let yOffset = 50; // Default for Mage/Tesla
@@ -294,7 +314,7 @@ export class Tower {
             ctx.drawImage(
                 sprite,
                 0, 0, sprite.width, sprite.height,
-                screenX - drawSize / 2, screenY - drawSize / 2 - (yOffset * scale), drawSize, drawSize
+                screenX - drawWidth / 2, screenY - drawHeight / 2 - (yOffset * scale), drawWidth, drawHeight
             );
         } else if (this.type === 'base_castle') {
             // Invisible Base (Art is in background)
@@ -342,5 +362,8 @@ export class Tower {
 export const TowerCosts = {
     'tower_cannon': 50,
     'tower_mage': 100,
-    'tower_tesla': 150
+    'tower_tesla': 150,
+    'tower_pulse_cannon': 60,
+    'tower_barracks': 90,
+    'tower_ice': 120
 };

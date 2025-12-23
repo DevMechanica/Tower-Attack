@@ -136,6 +136,11 @@ export class Map {
             this.assets['tower_mage_idle'].push(img);
         }
 
+        // Towers (now in separate folders)
+        this.loadImage('tower_pulse_cannon', 'assets/towers/PulseCannon/pulse_cannon.png');
+        this.loadImage('tower_barracks', 'assets/towers/Barracks/barracks.png');
+        this.loadImage('tower_ice', 'assets/towers/IceTower/ice_tower.png');
+
         this.loaded = false;
 
         const checkLoad = () => {
