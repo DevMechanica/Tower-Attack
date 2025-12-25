@@ -54,7 +54,7 @@ export class Unit {
         this.health = 167; // Reduced -5%
         this.maxHealth = 167;
         this.radius = 15;
-        this.range = 150;
+        this.range = 50; // Melee Range (was 150)
         this.siegesBase = false; // Default: Kamikaze into base. Set true to stop and shoot.
 
         // Type Specific Overrides
@@ -108,6 +108,24 @@ export class Unit {
         if (this.attackAnim > 0) {
             this.attackAnim -= deltaTime / 1000;
             if (this.attackAnim < 0) this.attackAnim = 0;
+        }
+
+        // Handle Pending Melee Damage
+        if (this.pendingAttack) {
+            this.pendingAttack.timer -= deltaTime / 1000;
+            if (this.pendingAttack.timer <= 0) {
+                // Apply Damage
+                if (this.pendingAttack.target && this.pendingAttack.target.active) {
+                    this.pendingAttack.target.takeDamage(15); // Fixed damage for grunt melee
+                    // Visual feedback
+                    if (this.game.effects) {
+                        // Small puff or flash? Re-use explosion but smaller?
+                        // Or just sound?
+                        // this.game.effects.spawnExplosion(this.pendingAttack.target.x, this.pendingAttack.target.y);
+                    }
+                }
+                this.pendingAttack = null;
+            }
         }
 
         this.updateBehavior(deltaTime);
@@ -220,6 +238,19 @@ export class Unit {
     }
 
     shoot(target) {
+        // MELEE LOGIC for Grunts/Crawlers fighting Units
+        if (this.radius < 20 && target instanceof Unit) {
+            // No projectile, just delayed hit
+            this.pendingAttack = {
+                target: target,
+                timer: 0.5 // Sync with impact (approx half of fast animation)
+            };
+            this.cooldown = this.maxCooldown;
+            this.attackAnim = 0.5; // Visual state duration
+            return;
+        }
+
+        // RANGED / DEFAULT
         this.game.projectiles.push(new Projectile(this.game, this.x, this.y, target, 'bullet'));
         this.cooldown = this.maxCooldown;
         this.attackAnim = 0.3;
@@ -246,39 +277,49 @@ export class Unit {
         let shouldFlip = false;
 
         if (this.type === 'unit_basic' || this.type === 'unit_crawler') {
-            // Determine dominant axis
-            const absDx = Math.abs(this.lastDx || 0);
-            const absDy = Math.abs(this.lastDy || 0); // Need to track lastDy defined below
 
-            // Logic for 4-way facing:
-            // 1. Horizontal Bias (Right Video)
-            // Increased threshold from 2.0 to 3.0 to capture shallow diagonals as "Diagonal"
-            // The user's Up-Right case (dx~180, dy~75 => ratio 2.4) needs to be Diagonal.
-            if (absDx > absDy * 3.0 || this.direction === 'up') {
-                assetName = 'soldier_walk_right';
-                // Base video faces Right. Flip if moving Left.
-                if (this.lastDx < 0) shouldFlip = true;
-            }
-            // 2. Vertical/Diagonal Bias (Down-Left / Down-Right Videos)
-            // 2. Vertical/Diagonal Bias
-            else {
-                // Determine Vertical Direction
-                if (this.lastDy > 0) {
-                    // DOWN-RIGHT / DOWN-LEFT
-                    // User Request: Use 'soldier_walk_down_right' (download 24) for BOTH directions.
-                    assetName = 'soldier_walk_down_right';
-                    // Flip for Down-Left
-                    shouldFlip = (this.lastDx < 0);
-                } else {
-                    // UP-RIGHT / UP-LEFT
-                    // New Request: Use 'soldier_walk_up_right' (download 27)
-                    assetName = 'soldier_walk_up_right';
-                    // Flip for Up-Left
-                    shouldFlip = (this.lastDx < 0);
+            // ATTACK ANIMATION
+            if (this.state === 'ATTACKING') {
+                assetName = 'soldier_attack';
+                // Flip if last movement was Left (assuming attack matches face direction)
+                if ((this.lastDx || 0) < 0) shouldFlip = true;
+                isSequence = false;
+            } else {
+                // Determine dominant axis
+
+                const absDx = Math.abs(this.lastDx || 0);
+                const absDy = Math.abs(this.lastDy || 0); // Need to track lastDy defined below
+
+                // Logic for 4-way facing:
+                // 1. Horizontal Bias (Right Video)
+                // Increased threshold from 2.0 to 3.0 to capture shallow diagonals as "Diagonal"
+                // The user's Up-Right case (dx~180, dy~75 => ratio 2.4) needs to be Diagonal.
+                if (absDx > absDy * 3.0 || this.direction === 'up') {
+                    assetName = 'soldier_walk_right';
+                    // Base video faces Right. Flip if moving Left.
+                    if (this.lastDx < 0) shouldFlip = true;
                 }
-            }
+                // 2. Vertical/Diagonal Bias (Down-Left / Down-Right Videos)
+                // 2. Vertical/Diagonal Bias
+                else {
+                    // Determine Vertical Direction
+                    if (this.lastDy > 0) {
+                        // DOWN-RIGHT / DOWN-LEFT
+                        // User Request: Use 'soldier_walk_down_right' (download 24) for BOTH directions.
+                        assetName = 'soldier_walk_down_right';
+                        // Flip for Down-Left
+                        shouldFlip = (this.lastDx < 0);
+                    } else {
+                        // UP-RIGHT / UP-LEFT
+                        // New Request: Use 'soldier_walk_up_right' (download 27)
+                        assetName = 'soldier_walk_up_right';
+                        // Flip for Up-Left
+                        shouldFlip = (this.lastDx < 0);
+                    }
+                }
 
-            isSequence = false; // Video element
+                isSequence = false; // Video element
+            }
         } else if (this.type === 'unit_spider') {
             // Check if spider is attaching/attached (SpiderUnit specific state)
             if (this.state === 'ATTACHING' || this.state === 'ATTACHED') {
@@ -382,6 +423,12 @@ export class Unit {
                 const targetRate = Math.max(0.5, Math.min(2, actualSpeed * 0.02));
                 sprite.playbackRate = targetRate;
             }
+
+            // FORCE FAST PLAYBACK FOR ATTACK
+            if (assetName === 'soldier_attack') {
+                sprite.playbackRate = 2.5; // Fast attack
+            }
+
             this.lastX = this.x;
             this.lastY = this.y;
 

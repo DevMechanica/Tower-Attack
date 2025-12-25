@@ -99,6 +99,7 @@ export class Map {
         this.loadVideo('soldier_walk_down_left', 'assets/units/soldier/Soldier_Animations/download (23).mp4');
         this.loadVideo('soldier_walk_down_right', 'assets/units/soldier/Soldier_Animations/download (24).mp4');
         this.loadVideo('soldier_walk_up_right', 'assets/units/soldier/Soldier_Animations/download (27).mp4');
+        this.loadVideo('soldier_attack', 'assets/units/soldier/Soldier_Animations/download (29).mp4');
         this.loadAnimation('spider_walk', 'assets/units/Spider/spider_walk', 5, 'png');
         this.loadAnimation('spider_walk_right', 'assets/units/Spider/Right_Movement/spider_walk_right', 5, 'png');
         this.loadAnimation('spider_walk_up', 'assets/units/Spider/Up_Movement/spider_walk_up', 6, 'png');
