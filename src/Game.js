@@ -336,11 +336,15 @@ export class Game {
             // Validation: Check Gold?
             // If validation passes:
             if (this.map.path.length > 0) {
-                // Ensure we have enough gold?
-                // Logic says: if (this.attackerGold >= cost) ...
-                // Let's assume unlimited or check cost.
-                // For MVP: Just spawn.
-                this.state.units.push(UnitFactory.createUnit(this, this.map.path, cmd.unitType));
+                let spawnPath = this.map.path;
+
+                // If Defender spawned it, REVERSE the path!
+                if (cmd.role === 'defender') {
+                    // Clone and reverse to avoid mutating the original singleton path
+                    spawnPath = [...this.map.path].reverse();
+                }
+
+                this.state.units.push(UnitFactory.createUnit(this, spawnPath, cmd.unitType, cmd.role));
                 // Cost deduction logic should be here.
             }
         }
@@ -971,26 +975,30 @@ export class Game {
         this.uiDock.className = `${this.role}-theme`;
 
         // Cooldown Overlay Logic (could be refined later)
-        const cooldownActive = (this.role === 'attacker' && performance.now() < this.attackerNextSpawnTime);
+        const cooldownActive = (performance.now() < this.attackerNextSpawnTime);
 
-        const items = (this.role === 'attacker')
-            ? [
-                { id: 'unit_basic', label: 'Grunt', img: 'assets/units/soldier/Main_soldier.png', cost: 10 },
-                { id: 'unit_tank', label: 'Tank', img: 'assets/units/unit_tank.png', cost: 30 },
-                { id: 'unit_golem', label: 'Golem', img: 'unit_golem.png', cost: 60 },
-                { id: 'unit_mecha_dino', label: 'Dino', img: 'assets/units/mecha_dino/mecha_dino.png', cost: 100 },
-                { id: 'unit_saber_rider', label: 'Rider', img: 'assets/units/saber_rider.png', cost: 50 },
-                { id: 'unit_crawler', label: 'Crawler', img: 'assets/units/soldier/Main_soldier.png', cost: 15 },
-                { id: 'unit_spider', label: 'Spider', img: 'assets/units/Spider/spider_walk_01.png', cost: 20 }
-            ]
-            : [
-                { id: 'tower_cannon', label: 'Cannon', img: 'assets/towers/Main_tower.png', cost: TowerCosts['tower_cannon'] },
-                { id: 'tower_mage', label: 'Mage', img: 'assets/towers/tower_mage.png', cost: TowerCosts['tower_mage'] },
-                { id: 'tower_tesla', label: 'Tesla', img: 'tower_tesla.png', cost: TowerCosts['tower_tesla'] },
-                { id: 'tower_pulse_cannon', label: 'Pulse', img: 'assets/towers/PulseCannon/pulse_cannon.png', cost: TowerCosts['tower_pulse_cannon'] },
-                { id: 'tower_barracks', label: 'Barracks', img: 'assets/towers/Barracks/barracks.png', cost: TowerCosts['tower_barracks'] },
-                { id: 'tower_ice', label: 'Ice', img: 'assets/towers/IceTower/ice_tower.png', cost: TowerCosts['tower_ice'] }
-            ];
+        // SIMULTANEOUS PVP: Show ALL cards for both players
+        // Merge Unit and Tower lists
+        const units = [
+            { id: 'unit_basic', label: 'Grunt', img: 'assets/units/soldier/Main_soldier.png', cost: 10 },
+            { id: 'unit_tank', label: 'Tank', img: 'assets/units/unit_tank.png', cost: 30 },
+            { id: 'unit_golem', label: 'Golem', img: 'unit_golem.png', cost: 60 },
+            { id: 'unit_mecha_dino', label: 'Dino', img: 'assets/units/mecha_dino/mecha_dino.png', cost: 100 },
+            { id: 'unit_saber_rider', label: 'Rider', img: 'assets/units/saber_rider.png', cost: 50 },
+            { id: 'unit_crawler', label: 'Crawler', img: 'assets/units/soldier/Main_soldier.png', cost: 15 },
+            { id: 'unit_spider', label: 'Spider', img: 'assets/units/Spider/spider_walk_01.png', cost: 20 }
+        ];
+
+        const towers = [
+            { id: 'tower_cannon', label: 'Cannon', img: 'assets/towers/Main_tower.png', cost: TowerCosts['tower_cannon'] },
+            { id: 'tower_mage', label: 'Mage', img: 'assets/towers/tower_mage.png', cost: TowerCosts['tower_mage'] },
+            { id: 'tower_tesla', label: 'Tesla', img: 'tower_tesla.png', cost: TowerCosts['tower_tesla'] },
+            { id: 'tower_pulse_cannon', label: 'Pulse', img: 'assets/towers/PulseCannon/pulse_cannon.png', cost: TowerCosts['tower_pulse_cannon'] },
+            { id: 'tower_barracks', label: 'Barracks', img: 'assets/towers/Barracks/barracks.png', cost: TowerCosts['tower_barracks'] },
+            { id: 'tower_ice', label: 'Ice', img: 'assets/towers/IceTower/ice_tower.png', cost: TowerCosts['tower_ice'] }
+        ];
+
+        const items = [...units, ...towers];
 
         // Filter for Campaign
         const filteredItems = (this.gamemode === 'campaign')
@@ -1013,10 +1021,11 @@ export class Game {
             `;
 
             card.onclick = () => {
-                // INSTANT SPAWN for Attacker (Units)
-                if (this.role === 'attacker' && item.id.startsWith('unit')) {
+                // INSTANT SPAWN for Units (Any Role for Co-op/Simultaneous)
+                if (item.id.startsWith('unit')) {
                     // Check Cooldown FIRST
                     const now = performance.now();
+                    // We stick to 'attackerNextSpawnTime' as a global cooldown for the local player
                     if (now < this.attackerNextSpawnTime) {
                         return; // Silent fail (visuals handled by updateUI)
                     }
@@ -1034,7 +1043,8 @@ export class Game {
 
                     const cmd = {
                         type: CommandType.SPAWN_UNIT,
-                        unitType: item.id
+                        unitType: item.id,
+                        role: this.role // CRITICAL: Tell everyone who spawned this (for path direction)
                     };
                     this.network.sendCommand(cmd);
 

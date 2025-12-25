@@ -2,10 +2,11 @@ import { Projectile } from './Projectile.js';
 
 // --- BASE CLASS ---
 export class Unit {
-    constructor(game, path, type) {
+    constructor(game, path, type, team) {
         this.game = game;
         this.path = path;
         this.type = type || 'unit_basic';
+        this.team = team || 'attacker'; // Default to attacker to preserve legacy behavior
         this.currentPointIndex = 0;
 
         // Shared video frame cache (static-like via game object)
@@ -177,6 +178,32 @@ export class Unit {
         let target = null;
         let minDist = Infinity;
 
+        // 1. Target Enemy Units (Highest Priority)
+        // Check for units on the other team
+        if (this.game.state && this.game.state.units) {
+            this.game.state.units.forEach(u => {
+                if (!u.active || u === this) return;
+                if (u.team === this.team) return; // Ignore teammates
+
+                const dist = Math.sqrt((u.x - this.x) ** 2 + (u.y - this.y) ** 2);
+                if (dist < this.range && dist < minDist) {
+                    minDist = dist;
+                    target = u;
+                }
+            });
+        }
+
+        // If unit target found, return it immediately (Soldiers fight soldiers first)
+        if (target) return target;
+
+        // 2. Target Enemy Units/Towers based on Team
+        // If I am 'attacker', I target Towers.
+        // If I am 'defender', I typically target Attacker units (handled above).
+        // But do Defenders target Towers? No.
+        // So if I am 'defender', and found no units, I'm done.
+        if (this.team === 'defender') return null;
+
+        // If 'attacker', continue to find Towers
         this.game.towers.forEach(tower => {
             if (!tower.active) return;
 
@@ -577,12 +604,24 @@ export class AttackerUnit extends Unit {
     // "Attacker": Ignores towers, goes for base.
     // Units: Basic Unit (Grunt), Tank
     updateBehavior(deltaTime) {
-        // Attackers ignore towers.
-        // If siegesBase is true, they will stop and attack the Base.
-        // Otherwise, they ignore it and Kamikaze (move until reachBase).
+        // 1. Check for ENEMY UNITS (Priority 1)
+        // findTarget now prioritizes units. If we get a Unit, we fight!
+        let target = this.findTarget();
 
+        if (target && target instanceof Unit) {
+            this.state = 'ATTACKING';
+            if (this.cooldown <= 0) {
+                this.shoot(target);
+            }
+            return;
+        }
+
+        // 2. Standard Behavior (Ignore Towers unless siegesBase)
         if (this.siegesBase) {
-            let target = this.findTarget(true); // ignoreRegularTowers = true
+            // Re-check target for Base? 
+            // findTarget might have returned a regular tower which we skipped above if we only want base.
+            // But if we want to check specifically for Base now:
+            target = this.findTarget(true); // ignoreRegularTowers = true
             if (target) {
                 this.state = 'ATTACKING';
                 if (this.cooldown <= 0) {
@@ -648,8 +687,8 @@ export class HybridUnit extends Unit {
 export class CrawlerUnit extends Unit {
     // "Crawler": Goes straight to base, ignoring path.
     // Units: Crawler (uses Grunt sprite)
-    constructor(game, path, type) {
-        super(game, path, type);
+    constructor(game, path, type, team) {
+        super(game, path, type, team);
 
         // Calculate direct vector to end of path
         // Crawler targets base coordinates mostly, but we should define it relative to enemyBase if possible
@@ -699,8 +738,8 @@ export class CrawlerUnit extends Unit {
 
 export class SpiderUnit extends Unit {
     // "Spider": Attaches to towers, disables them, and drains their health
-    constructor(game, path, type) {
-        super(game, path, type);
+    constructor(game, path, type, team) {
+        super(game, path, type, team);
 
         this.attachedTo = null; // Tower reference when attached
         this.drainRate = 10; // HP per second drained from tower
@@ -831,28 +870,28 @@ export class SpiderUnit extends Unit {
 // --- FACTORY ---
 
 export class UnitFactory {
-    static createUnit(game, path, type) {
+    static createUnit(game, path, type, team) {
         switch (type) {
             case 'unit_tank':
             case 'unit_basic': // "Brute" / Grunt
-                return new AttackerUnit(game, path, type);
+                return new AttackerUnit(game, path, type, team);
 
             case 'unit_golem':
             case 'unit_mecha_dino':
-                return new SiegerUnit(game, path, type);
+                return new SiegerUnit(game, path, type, team);
 
             case 'unit_saber_rider':
-                return new HybridUnit(game, path, type);
+                return new HybridUnit(game, path, type, team);
 
             case 'unit_crawler':
-                return new CrawlerUnit(game, path, type);
+                return new CrawlerUnit(game, path, type, team);
 
             case 'unit_spider':
-                return new SpiderUnit(game, path, type);
+                return new SpiderUnit(game, path, type, team);
 
             default:
                 console.warn(`Unknown unit type ${type}, defaulting to Attacker.`);
-                return new AttackerUnit(game, path, type);
+                return new AttackerUnit(game, path, type, team);
         }
     }
 }
