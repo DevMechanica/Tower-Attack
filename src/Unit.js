@@ -8,6 +8,12 @@ export class Unit {
         this.type = type || 'unit_basic';
         this.currentPointIndex = 0;
 
+        // Shared video frame cache (static-like via game object)
+        if (!this.game._videoFrameCache) {
+            this.game._videoFrameCache = new Map();
+            this.game._videoFrameCacheTimestamp = 0;
+        }
+
         // Start Position
         if (this.path && this.path.length > 0) {
             this.x = this.path[0].x;
@@ -39,7 +45,7 @@ export class Unit {
 
     setupStats() {
         // Defaults
-        this.speed = 110; // Increased
+        this.speed = 50; // Reduced from 110 to match walking animation
         this.health = 167; // Reduced -5%
         this.maxHealth = 167;
         this.radius = 15;
@@ -130,6 +136,10 @@ export class Unit {
             this.x += moveX;
             this.y += moveY;
 
+            // Track last movement for animation selection
+            this.lastDx = dx;
+            this.lastDy = dy;
+
             // Update direction based on primary movement axis
             const absDx = Math.abs(dx);
             const absDy = Math.abs(dy);
@@ -200,13 +210,44 @@ export class Unit {
         const screenY = map.offsetY + renderY * map.scale;
         const scale = map.scale;
 
-        // Select Asset
-        let assetName = 'Main_unit';
-        let isSequence = false;
+        let assetName = 'unit_basic'; // Fallback
+        let isSequence = true;
+        let shouldFlip = false;
 
         if (this.type === 'unit_basic' || this.type === 'unit_crawler') {
-            assetName = 'soldier_walk';
-            isSequence = true;
+            // Determine dominant axis
+            const absDx = Math.abs(this.lastDx || 0);
+            const absDy = Math.abs(this.lastDy || 0); // Need to track lastDy defined below
+
+            // Logic for 4-way facing:
+            // 1. Horizontal Bias (Right Video)
+            // Increased threshold from 2.0 to 3.0 to capture shallow diagonals as "Diagonal"
+            // The user's Up-Right case (dx~180, dy~75 => ratio 2.4) needs to be Diagonal.
+            if (absDx > absDy * 3.0 || this.direction === 'up') {
+                assetName = 'soldier_walk_right';
+                // Base video faces Right. Flip if moving Left.
+                if (this.lastDx < 0) shouldFlip = true;
+            }
+            // 2. Vertical/Diagonal Bias (Down-Left / Down-Right Videos)
+            // 2. Vertical/Diagonal Bias
+            else {
+                // Determine Vertical Direction
+                if (this.lastDy > 0) {
+                    // DOWN-RIGHT / DOWN-LEFT
+                    // User Request: Use 'soldier_walk_down_right' (download 24) for BOTH directions.
+                    assetName = 'soldier_walk_down_right';
+                    // Flip for Down-Left
+                    shouldFlip = (this.lastDx < 0);
+                } else {
+                    // UP-RIGHT / UP-LEFT
+                    // New Request: Use 'soldier_walk_up_right' (download 27)
+                    assetName = 'soldier_walk_up_right';
+                    // Flip for Up-Left
+                    shouldFlip = (this.lastDx < 0);
+                }
+            }
+
+            isSequence = false; // Video element
         } else if (this.type === 'unit_spider') {
             // Check if spider is attaching/attached (SpiderUnit specific state)
             if (this.state === 'ATTACHING' || this.state === 'ATTACHED') {
@@ -247,7 +288,200 @@ export class Unit {
             sprite = map.assets[assetName];
         }
 
-        if (sprite && sprite.complete) {
+        // Check if sprite is a video element
+        const isVideo = sprite && sprite.tagName === 'VIDEO';
+
+        // Draw drop shadow for grounding effect
+        const shadowOffsetY = 10 * scale; // Shadow slightly below the unit
+        const shadowWidth = 40 * scale; // Shadow width
+        const shadowHeight = 15 * scale; // Shadow height (ellipse)
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; // Semi-transparent black
+        ctx.beginPath();
+        ctx.ellipse(
+            screenX,
+            screenY + shadowOffsetY,
+            shadowWidth / 2,
+            shadowHeight / 2,
+            0, 0, Math.PI * 2
+        );
+        ctx.fill();
+        ctx.restore();
+
+        if (isVideo) {
+            // Dynamic video playback speed based on actual movement
+            if (this.lastX !== undefined && this.lastY !== undefined) {
+                const dx = this.x - this.lastX;
+                const dy = this.y - this.lastY;
+                const actualSpeed = Math.sqrt(dx * dx + dy * dy);
+
+                // Adjust playback rate based on actual movement (smoother animation)
+                const targetRate = Math.max(0.5, Math.min(2, actualSpeed * 0.02));
+                sprite.playbackRate = targetRate;
+            }
+            this.lastX = this.x;
+            this.lastY = this.y;
+
+            // Determine start time offset
+            let startTime = 0.2;
+            // Specific tweak for download (24) (Down-Right/Down-Left)
+            if (assetName === 'soldier_walk_down_right') {
+                startTime = 0.8;
+            }
+
+            // Enforce start time (Loop Fix): If video loops to 0, push it back to startOffset
+            if (sprite.currentTime < startTime) {
+                sprite.currentTime = startTime;
+            }
+
+            // Ensure video is playing
+            if (sprite.paused) {
+                sprite.play().catch(err => console.warn('Video play failed:', err));
+            }
+
+            // Video element - render with white background removal
+            if (sprite.readyState >= 2) { // HAVE_CURRENT_DATA or better
+                // Calculate proper size - make it bigger
+                const baseHeight = 150 * scale;
+
+                // Crop out black bars on sides by using center 50% of video width
+                // Reduced from 0.70 to 0.50 to fix visible black bars on new assets
+                const cropPercent = 0.50;
+                const sourceX = sprite.videoWidth * (1 - cropPercent) / 2;
+                const sourceWidth = sprite.videoWidth * cropPercent;
+                const sourceY = 0;
+                const sourceHeight = sprite.videoHeight;
+
+                const aspectRatio = sourceWidth / sourceHeight;
+                const drawWidth = baseHeight * aspectRatio;
+                const drawHeight = baseHeight;
+
+                // Check if this video frame has already been processed this render cycle
+                // Add Flip status to cache key! A flipped frame is distinct? 
+                // Actually we flip the FINAL draw call, so we can share the processed frame logic!
+                const cacheKey = `${assetName}_${sprite.currentTime.toFixed(3)}`;
+                const currentFrameId = this.game._frameCounter || 0;
+
+                let processedCanvas;
+
+                // If cache is stale or doesn't have this frame, process it
+                if (this.game._videoFrameCacheTimestamp !== currentFrameId) {
+                    // New frame, clear cache
+                    this.game._videoFrameCache.clear();
+                    this.game._videoFrameCacheTimestamp = currentFrameId;
+                }
+
+                if (!this.game._videoFrameCache.has(cacheKey)) {
+                    // Process this frame (first unit to use it this frame)
+                    const tempCanvas = document.createElement('canvas');
+                    const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
+
+                    tempCanvas.width = sourceWidth;
+                    tempCanvas.height = sourceHeight;
+
+                    // Draw cropped video to temp canvas
+                    tempCtx.drawImage(sprite, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
+
+                    // Get pixel data and make white pixels transparent
+                    const imageData = tempCtx.getImageData(0, 0, sourceWidth, sourceHeight);
+                    const data = imageData.data;
+
+                    // Smart Chroma Key & Shadow Recovery
+                    // 1. Background (Pure White): Remove
+                    // 2. Shadow (Gray): Tint to black with transparency
+
+                    const bgThreshold = 245; // Strictly remove nearly pure white
+                    const shadowThreshold = 180; // Catch shadows (was 200)
+                    const saturationThreshold = 30; // Strict saturation check
+
+                    for (let i = 0; i < data.length; i += 4) {
+                        const r = data[i];
+                        const g = data[i + 1];
+                        const b = data[i + 2];
+
+                        const maxVal = Math.max(r, g, b);
+                        const minVal = Math.min(r, g, b);
+                        const range = maxVal - minVal;
+
+                        // Check for neutrality (Gray/White)
+                        if (range < saturationThreshold) {
+                            if (maxVal > bgThreshold) {
+                                // Pure White Background -> Transparent
+                                data[i + 3] = 0;
+                            } else if (maxVal > shadowThreshold) {
+                                // Light Gray Shadow -> Convert to Real Shadow
+                                // Make it black
+                                data[i] = 0;
+                                data[i + 1] = 0;
+                                data[i + 2] = 0;
+                                // Semi-transparent (adjust 100-150 for darkness)
+                                data[i + 3] = 120;
+                            }
+                        }
+                    }
+
+                    tempCtx.putImageData(imageData, 0, 0);
+
+                    // Cache this processed frame
+                    this.game._videoFrameCache.set(cacheKey, tempCanvas);
+                    processedCanvas = tempCanvas;
+                } else {
+                    // Reuse cached processed frame
+                    processedCanvas = this.game._videoFrameCache.get(cacheKey);
+                }
+
+                // Update personal cache for direction switches
+                if (!this._cachedFrame) {
+                    this._cachedFrame = document.createElement('canvas');
+                }
+                // Resize if needed
+                if (this._cachedFrame.width !== processedCanvas.width || this._cachedFrame.height !== processedCanvas.height) {
+                    this._cachedFrame.width = processedCanvas.width;
+                    this._cachedFrame.height = processedCanvas.height;
+                }
+                const cacheCtx = this._cachedFrame.getContext('2d');
+                cacheCtx.clearRect(0, 0, this._cachedFrame.width, this._cachedFrame.height);
+                cacheCtx.drawImage(processedCanvas, 0, 0);
+
+                // Draw the processed image to main canvas with optional flip
+                ctx.save();
+                if (shouldFlip) {
+                    // Translate to integer position for pixel crispness
+                    ctx.translate(screenX, screenY);
+                    ctx.scale(-1, 1);
+                    ctx.translate(-screenX, -screenY);
+                }
+
+                ctx.drawImage(
+                    processedCanvas,
+                    0, 0, sourceWidth, sourceHeight,
+                    screenX - drawWidth / 2, screenY - drawHeight / 2 - (drawHeight * 0.2), drawWidth, drawHeight
+                );
+
+                ctx.restore();
+
+            } else if (this._cachedFrame) {
+                // Video not ready yet, use cached frame from previous render to avoid blue dot
+                const baseHeight = 150 * scale;
+                const aspectRatio = this._cachedFrame.width / this._cachedFrame.height;
+                const drawWidth = baseHeight * aspectRatio;
+                const drawHeight = baseHeight;
+
+                ctx.drawImage(
+                    this._cachedFrame,
+                    0, 0, this._cachedFrame.width, this._cachedFrame.height,
+                    screenX - drawWidth / 2, screenY - drawHeight / 2 - (drawHeight * 0.2), drawWidth, drawHeight
+                );
+            } else {
+                // No cached frame available, draw fallback circle (only on very first spawn)
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, this.radius * map.scale, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        } else if (sprite && sprite.complete) {
+            // Image element - existing logic
             let drawSize = 60 * scale;
             if (this.type === 'unit_tank') drawSize = 80 * scale;
             if (this.type === 'unit_golem') drawSize = 100 * scale;
@@ -271,10 +505,10 @@ export class Unit {
             ctx.fill();
         }
 
-        // Health Bar
+        // Health Bar - positioned higher above the unit
         const barWidth = 30 * map.scale;
         const barHeight = 5 * map.scale;
-        const barY = screenY - (this.radius * map.scale) - 20 * map.scale;
+        const barY = screenY - (this.radius * map.scale) - 60 * map.scale; // Raised from -20 to -60
 
         // Border
         ctx.strokeStyle = '#000';

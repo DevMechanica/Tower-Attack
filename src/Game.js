@@ -295,6 +295,11 @@ export class Game {
 
 
     render(timestamp) {
+        // Increment frame counter for video cache invalidation
+        if (!this._frameCounter) this._frameCounter = 0;
+        this._frameCounter++;
+        this._videoFrameCacheTimestamp = this._frameCounter;
+
         // Delegate to Renderer
         this.renderer.draw(this.state, this.map);
 

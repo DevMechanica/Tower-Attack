@@ -311,6 +311,24 @@ export class Tower {
                 yOffset = 15;
             }
 
+            // Draw drop shadow at the base of where the tower visually sits
+            const shadowY = screenY + drawHeight / 2 - (yOffset * scale); // At the bottom of the visible tower
+            const shadowWidth = 70 * scale; // Wider shadow for towers
+            const shadowHeight = 25 * scale; // Shadow height (ellipse)
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; // Darker shadow for visibility
+            ctx.beginPath();
+            ctx.ellipse(
+                screenX,
+                shadowY,
+                shadowWidth / 2,
+                shadowHeight / 2,
+                0, 0, Math.PI * 2
+            );
+            ctx.fill();
+            ctx.restore();
+
             ctx.drawImage(
                 sprite,
                 0, 0, sprite.width, sprite.height,

@@ -94,8 +94,11 @@ export class Map {
         this.loadImage('explosion', 'explosion.png'); // Kept in root
 
         // Load Animations
-        this.loadAnimation('soldier_walk', 'assets/units/soldier/soldier_walk', 7, 'jpg');
-        this.loadAnimation('soldier_attack', 'assets/units/soldier/soldier_attack', 4, 'jpg');
+        // Soldier now uses video animations with directional support
+        this.loadVideo('soldier_walk_right', 'assets/units/soldier/Soldier_Animations/download (28).mp4');
+        this.loadVideo('soldier_walk_down_left', 'assets/units/soldier/Soldier_Animations/download (23).mp4');
+        this.loadVideo('soldier_walk_down_right', 'assets/units/soldier/Soldier_Animations/download (24).mp4');
+        this.loadVideo('soldier_walk_up_right', 'assets/units/soldier/Soldier_Animations/download (27).mp4');
         this.loadAnimation('spider_walk', 'assets/units/Spider/spider_walk', 5, 'png');
         this.loadAnimation('spider_walk_right', 'assets/units/Spider/Right_Movement/spider_walk_right', 5, 'png');
         this.loadAnimation('spider_walk_up', 'assets/units/Spider/Up_Movement/spider_walk_up', 6, 'png');
@@ -180,20 +183,33 @@ export class Map {
 
         // Waypoints provided by user
         this.path = [
-            { x: 393, y: 309 },
-            { x: 505, y: 381 },
-            { x: 606, y: 441 },
-            { x: 525, y: 553 },
-            { x: 391, y: 634 },
-            { x: 383, y: 722 },
-            { x: 483, y: 834 },
-            { x: 657, y: 864 },
-            { x: 839, y: 794 },
-            { x: 971, y: 874 },
-            { x: 1214, y: 806 },
-            { x: 1299, y: 723 },
-            { x: 1453, y: 772 },
-            { x: 1561, y: 836 }
+            { x: 348.99, y: 261.86 },
+            { x: 455.51, y: 344.71 },
+            { x: 538.36, y: 393.53 },
+            { x: 606.41, y: 436.44 },
+            { x: 579.78, y: 501.53 },
+            { x: 520.60, y: 554.79 },
+            { x: 421.48, y: 608.05 },
+            { x: 377.10, y: 661.32 },
+            { x: 384.49, y: 730.85 },
+            { x: 415.56, y: 778.19 },
+            { x: 505.81, y: 838.85 },
+            { x: 585.70, y: 865.48 },
+            { x: 683.34, y: 853.64 },
+            { x: 769.15, y: 829.97 },
+            { x: 829.81, y: 788.55 },
+            { x: 875.67, y: 788.55 },
+            { x: 925.97, y: 810.74 },
+            { x: 968.88, y: 841.81 },
+            { x: 994.03, y: 875.84 },
+            { x: 1118.30, y: 853.64 },
+            { x: 1193.75, y: 794.47 },
+            { x: 1254.41, y: 733.81 },
+            { x: 1318.03, y: 720.49 },
+            { x: 1380.16, y: 705.70 },
+            { x: 1437.86, y: 744.16 },
+            { x: 1505.92, y: 792.99 },
+            { x: 1591.73, y: 837.37 }
         ];
 
         // Tower Slots provided by user (Defender build spots)
@@ -219,6 +235,21 @@ export class Map {
         const img = new Image();
         img.src = src;
         this.assets[key] = img;
+    }
+
+    loadVideo(key, src) {
+        const video = document.createElement('video');
+        video.src = src;
+        video.muted = true;
+        video.playsInline = true;
+        video.loop = true;
+        video.autoplay = false; // We'll play it when needed
+        video.preload = 'auto';
+
+        // Start loading the video
+        video.load();
+
+        this.assets[key] = video;
     }
 
     loadAssets(names) {
