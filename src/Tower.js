@@ -5,6 +5,11 @@ import { AudioManager } from './AudioManager.js';
 export class Tower {
     constructor(game, x, y, type) {
         this.game = game;
+
+        // Shared video frame cache for towers to optimize performance
+        if (!this.game._towerVideoCache) {
+            this.game._towerVideoCache = new Map();
+        }
         this.x = x;
         this.y = y;
         this.type = type; // 'tower_cannon', 'tower_mage'
@@ -54,6 +59,39 @@ export class Tower {
             this.radius = 40; // Bigger
             this.color = '#fff'; // White
             this.range = 0; // Does not attack
+        }
+
+        // Crystal Tower - Build Animation Logic
+        if (this.type === 'tower_crystal') {
+            this.isBuilding = true;
+            this.range = 250; // High range
+            this.color = '#7dd3fc'; // Light Blue
+
+            // Clone video so it plays independently per tower
+            const buildVideoAsset = this.game.map.assets['tower_crystal_build'];
+            if (buildVideoAsset) {
+                this.buildVideo = buildVideoAsset.cloneNode(true);
+                this.buildVideo.loop = false;
+                this.buildVideo.muted = true;
+                this.buildVideo.playbackRate = 1.0;
+                this.buildVideo.currentTime = 0.5; // Start at 0.3 seconds
+
+                // Load the video first
+                this.buildVideo.load();
+
+                // Play with promise handling
+                this.buildVideo.play().catch(e => {
+                    console.warn('Crystal Tower video autoplay blocked:', e);
+                });
+
+                this.buildVideo.addEventListener('ended', () => {
+                    this.isBuilding = false;
+                    this.buildVideo = null; // Cleanup
+                });
+            } else {
+                console.warn("Crystal Tower build video not found!");
+                this.isBuilding = false; // Fallback
+            }
         }
     }
 
@@ -266,7 +304,10 @@ export class Tower {
         // Ice Towers (3 types, no animations)
         if (this.type === 'tower_pulse_cannon') assetName = 'tower_pulse_cannon';
         if (this.type === 'tower_barracks') assetName = 'tower_barracks';
+        if (this.type === 'tower_pulse_cannon') assetName = 'tower_pulse_cannon';
+        if (this.type === 'tower_barracks') assetName = 'tower_barracks';
         if (this.type === 'tower_ice') assetName = 'tower_ice';
+        if (this.type === 'tower_crystal') assetName = 'tower_crystal';
 
         // if (this.recoil > 0 && this.type === 'tower_cannon') {
         //    assetName = 'Main_tower_attack';
@@ -285,8 +326,149 @@ export class Tower {
             sprite = sprite[this.currentFrame];
         }
 
-        // Sprite Drawing
-        if (sprite && sprite.complete) {
+        // CRYSTAL TOWER - SPECIAL HANDLING (Must come before general sprite rendering)
+        if (this.type === 'tower_crystal' && this.isBuilding && this.buildVideo) {
+            // Crystal Tower Video - Building Animation with Chroma Key
+            // Only process if video is ready
+            if (this.buildVideo.readyState >= 2 && this.buildVideo.videoWidth > 0) {
+                const size = 200 * scale;
+
+                // Crop black bars like soldier animations
+                const cropPercent = 0.50; // Use center 50% of video width
+                const sourceX = this.buildVideo.videoWidth * (1 - cropPercent) / 2;
+                const sourceWidth = this.buildVideo.videoWidth * cropPercent;
+                const sourceY = 0;
+                const sourceHeight = this.buildVideo.videoHeight;
+
+                const aspectRatio = sourceWidth / sourceHeight;
+                const drawWidth = size * aspectRatio;
+                const drawHeight = size;
+                const yOffset = 50 * scale;
+
+                // Create temp canvas for processing if not exists
+                if (!this._tempCanvas) {
+                    this._tempCanvas = document.createElement('canvas');
+                }
+                this._tempCanvas.width = sourceWidth;
+                this._tempCanvas.height = sourceHeight;
+                const tempCtx = this._tempCanvas.getContext('2d', { willReadFrequently: true });
+
+                // Draw cropped video to temp canvas
+                tempCtx.drawImage(this.buildVideo, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
+
+                // Process Pixel Data (Chroma Key - White & Black Background Removal)
+                const imageData = tempCtx.getImageData(0, 0, this._tempCanvas.width, this._tempCanvas.height);
+                const data = imageData.data;
+
+                const bgThreshold = 245; // White threshold
+                const shadowThreshold = 180;
+                const saturationThreshold = 30;
+                const blackThreshold = 50; // Black threshold (increased for better removal)
+
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    const maxVal = Math.max(r, g, b);
+                    const minVal = Math.min(r, g, b);
+                    const range = maxVal - minVal;
+
+                    // Remove pure black (check first, regardless of saturation)
+                    if (maxVal < blackThreshold) {
+                        data[i + 3] = 0; // Black -> transparent
+                    }
+                    // Remove white/grey background (low saturation)
+                    else if (range < saturationThreshold) {
+                        if (maxVal > bgThreshold) {
+                            data[i + 3] = 0; // White -> transparent
+                        } else if (maxVal > shadowThreshold) {
+                            data[i] = 0;
+                            data[i + 1] = 0;
+                            data[i + 2] = 0;
+                            data[i + 3] = 120; // Grey -> semi-transparent shadow
+                        }
+                    }
+                }
+                tempCtx.putImageData(imageData, 0, 0);
+
+                // Draw Processed Canvas
+                ctx.drawImage(
+                    this._tempCanvas,
+                    screenX - drawWidth / 2,
+                    screenY - drawHeight / 2 - yOffset,
+                    drawWidth,
+                    drawHeight
+                );
+            }
+        } else if (this.type === 'tower_crystal' && !this.isBuilding) {
+            // Crystal Tower Static Image with Chroma Key
+            const size = 200 * scale;
+            const cacheKey = `processed_${assetName}`;
+
+            // Check if we have a processed version in Game Cache (stored as canvas)
+            if (!this.game._towerImageCache) {
+                this.game._towerImageCache = {};
+            }
+
+            if (!this.game._towerImageCache[cacheKey] && sprite && sprite.complete) {
+                // Process and Cache as Canvas (not Image)
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = sprite.width;
+                tempCanvas.height = sprite.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(sprite, 0, 0);
+                const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                const data = imgData.data;
+
+                const bgThreshold = 245;
+                const shadowThreshold = 180;
+                const saturationThreshold = 30;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    const maxVal = Math.max(r, g, b);
+                    const minVal = Math.min(r, g, b);
+                    const range = maxVal - minVal;
+
+                    if (range < saturationThreshold) {
+                        if (maxVal > bgThreshold) data[i + 3] = 0;
+                        else if (maxVal > shadowThreshold) {
+                            data[i] = 0; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 120;
+                        }
+                    }
+                }
+                tempCtx.putImageData(imgData, 0, 0);
+
+                // Cache the canvas directly (not converting to Image)
+                this.game._towerImageCache[cacheKey] = tempCanvas;
+            }
+
+            const processedCanvas = this.game._towerImageCache[cacheKey];
+
+            if (processedCanvas) {
+                // Calculate size maintaining aspect ratio
+                const aspectRatio = processedCanvas.width / processedCanvas.height;
+                let drawWidth, drawHeight;
+
+                if (aspectRatio > 1) {
+                    drawWidth = size;
+                    drawHeight = size / aspectRatio;
+                } else {
+                    drawHeight = size;
+                    drawWidth = size * aspectRatio;
+                }
+
+                const yOffset = 50;
+
+                ctx.drawImage(
+                    processedCanvas,
+                    0, 0, processedCanvas.width, processedCanvas.height,
+                    screenX - drawWidth / 2, screenY - drawHeight / 2 - (yOffset * scale), drawWidth, drawHeight
+                );
+            }
+        } else if (sprite && sprite.complete) {
             // Calculate size maintaining aspect ratio
             const baseSize = 200 * scale;
             const scaledSize = baseSize * (1 + this.recoil);
@@ -336,7 +518,6 @@ export class Tower {
             );
         } else if (this.type === 'base_castle') {
             // Invisible Base (Art is in background)
-            // No render commands checks.
         } else {
             // Fallback Circle
             const size = this.radius * scale;
@@ -407,5 +588,8 @@ export const TowerCosts = {
     'tower_tesla': 150,
     'tower_pulse_cannon': 60,
     'tower_barracks': 90,
-    'tower_ice': 120
+    'tower_pulse_cannon': 60,
+    'tower_barracks': 90,
+    'tower_ice': 120,
+    'tower_crystal': 200
 };

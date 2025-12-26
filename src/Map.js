@@ -144,6 +144,10 @@ export class Map {
         this.loadImage('tower_pulse_cannon', 'assets/towers/PulseCannon/pulse_cannon.png');
         this.loadImage('tower_barracks', 'assets/towers/Barracks/barracks.png');
         this.loadImage('tower_ice', 'assets/towers/IceTower/ice_tower.png');
+        this.loadImage('tower_crystal', 'assets/towers/CrystalTower/Gemini_Generated_Image_ekb5v6ekb5v6ekb5.png');
+
+        // Crystal Tower Build Animation (Video)
+        this.loadVideo('tower_crystal_build', 'assets/towers/CrystalTower/download (31).mp4'); // Non-looping handled in Tower.js cloning
 
         this.loaded = false;
 
