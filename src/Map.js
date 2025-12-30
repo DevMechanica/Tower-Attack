@@ -149,6 +149,9 @@ export class Map {
         // Crystal Tower Build Animation (Video)
         this.loadVideo('tower_crystal_build', 'assets/towers/CrystalTower/download (31).mp4'); // Non-looping handled in Tower.js cloning
 
+        // Crystal Tower Attack Animation (Video)
+        this.loadVideo('tower_crystal_attack', 'assets/towers/CrystalTower/AttackAnimation/download (27).mp4'); // Non-looping handled in Tower.js cloning
+
         this.loaded = false;
 
         const checkLoad = () => {

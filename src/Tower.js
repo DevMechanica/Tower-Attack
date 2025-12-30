@@ -66,6 +66,8 @@ export class Tower {
             this.isBuilding = true;
             this.range = 250; // High range
             this.color = '#7dd3fc'; // Light Blue
+            this.attackVideo = null; // Will hold the attack animation video when attacking
+            this.maxCooldown = 4000; // Crystal tower attack speed (matches 4 second animation)
 
             // Clone video so it plays independently per tower
             const buildVideoAsset = this.game.map.assets['tower_crystal_build'];
@@ -262,6 +264,74 @@ export class Tower {
             return;
         }
 
+        if (this.type === 'tower_crystal' && !this.isBuilding) {
+            // Don't start a new attack if one is already playing
+            if (this.attackVideo) {
+                return;
+            }
+
+            // Store target's path position NOW (before it might die)
+            // Always find closest path point to target's actual position (more reliable)
+            if (target) {
+                this._burnTargetTeam = target.team; // Capturing Team for Direction Logic
+                const path = this.game.map.path;
+                let closestIndex = 0;
+                let closestDist = Infinity;
+                for (let i = 0; i < path.length; i++) {
+                    const dx = path[i].x - target.x;
+                    const dy = path[i].y - target.y;
+                    const dist = dx * dx + dy * dy;
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closestIndex = i;
+                    }
+                }
+                this._burnTargetIndex = closestIndex;
+                console.log('Crystal: target type:', target.type, 'team:', target.team, 'at position:', Math.round(target.x), Math.round(target.y), '-> closest path index:', closestIndex);
+            } else {
+                this._burnTargetIndex = null;
+                this._burnTargetTeam = 'attacker'; // Default fallback
+                console.log('Crystal: no target, using fallback');
+            }
+
+            // Trigger attack animation video
+            const attackVideoAsset = this.game.map.assets['tower_crystal_attack'];
+            if (attackVideoAsset) {
+                this.attackVideo = attackVideoAsset.cloneNode(true);
+                this.attackVideo.loop = false;
+                this.attackVideo.muted = true;
+                this.attackVideo.playbackRate = 1.0;
+                this.attackVideo.currentTime = 0;
+
+                this.attackVideo.load();
+
+                this.attackVideo.play().catch(e => {
+                    console.warn('Crystal Tower attack video play blocked:', e);
+                });
+
+                // Handle attack at mid-point of animation
+                this.attackVideo.addEventListener('timeupdate', () => {
+                    // Fire projectile at around 40% of the animation
+                    if (this.attackVideo && this.attackVideo.currentTime >= this.attackVideo.duration * 0.4 && !this.hasFired) {
+                        if (target && target.active) {
+                            const projType = 'magic';
+                            this.game.projectiles.push(new Projectile(this.game, this.x, this.y, target, projType));
+                            this.recoil = 0.2;
+                        }
+                        this.hasFired = true;
+                    }
+                });
+
+                this.attackVideo.addEventListener('ended', () => {
+                    this.attackVideo = null; // Cleanup
+                    this.hasFired = false;
+                    this._burnTargetIndex = null; // Reset for next attack
+                    this._burnTargetTeam = null;
+                });
+            }
+            return;
+        }
+
         // Create projectile (Cannon only now, or others)
         const projType = (this.type === 'tower_cannon') ? 'bullet' : 'magic';
         this.game.projectiles.push(new Projectile(this.game, this.x, this.y, target, projType));
@@ -400,6 +470,272 @@ export class Tower {
                     drawHeight
                 );
             }
+        } else if (this.type === 'tower_crystal' && this.attackVideo && this.attackVideo.readyState >= 2) {
+            // Crystal Tower Attack Animation
+            const size = 200 * scale;
+
+            // Use full video dimensions (no cropping needed for this animation)
+            const sourceX = 0;
+            const sourceWidth = this.attackVideo.videoWidth;
+            const sourceY = 0;
+            const sourceHeight = this.attackVideo.videoHeight;
+
+            // Match size to static tower - use size as the height (tower is taller than wide)
+            const aspectRatio = sourceWidth / sourceHeight;
+            const drawHeight = size;
+            const drawWidth = size * aspectRatio;
+            const yOffset = 50 * scale;
+
+            // Create temp canvas for processing if not exists
+            if (!this._attackTempCanvas) {
+                this._attackTempCanvas = document.createElement('canvas');
+            }
+            this._attackTempCanvas.width = sourceWidth;
+            this._attackTempCanvas.height = sourceHeight;
+            const tempCtx = this._attackTempCanvas.getContext('2d', { willReadFrequently: true });
+
+            // Draw full video to temp canvas
+            tempCtx.drawImage(this.attackVideo, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
+
+            // Process Pixel Data (Chroma Key - White & Black Background Removal)
+            const imageData = tempCtx.getImageData(0, 0, this._attackTempCanvas.width, this._attackTempCanvas.height);
+            const data = imageData.data;
+
+            const bgThreshold = 245;
+            const shadowThreshold = 180;
+            const saturationThreshold = 30;
+            const blackThreshold = 50;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const maxVal = Math.max(r, g, b);
+                const minVal = Math.min(r, g, b);
+                const range = maxVal - minVal;
+
+                if (maxVal < blackThreshold) {
+                    data[i + 3] = 0;
+                }
+                else if (range < saturationThreshold) {
+                    if (maxVal > bgThreshold) {
+                        data[i + 3] = 0;
+                    } else if (maxVal > shadowThreshold) {
+                        data[i] = 0;
+                        data[i + 1] = 0;
+                        data[i + 2] = 0;
+                        data[i + 3] = 120;
+                    }
+                }
+            }
+            tempCtx.putImageData(imageData, 0, 0);
+
+            // Split rendering: tower part at normal size, lightning beam stretched to top of screen
+            // The lightning beam is only the very tip top portion of the video
+            const lightningCutoff = 0.03; // Top 3% of video is lightning beam only
+
+            // Calculate source regions
+            const towerSourceHeight = sourceHeight * (1 - lightningCutoff);
+            const lightningSourceHeight = sourceHeight * lightningCutoff;
+
+            // Calculate draw regions - tower stays normal size
+            const towerDrawHeight = drawHeight * (1 - lightningCutoff);
+
+            // Position the tower
+            const towerDrawY = screenY - drawHeight / 2 - yOffset + (drawHeight * lightningCutoff);
+
+            // Lightning extends all the way to top of screen
+            const lightningDrawY = 0;
+            const lightningDrawHeight = towerDrawY; // From top of screen to top of tower
+
+            // Draw the tower portion (bottom part of video) - normal size
+            ctx.drawImage(
+                this._attackTempCanvas,
+                0, sourceHeight * lightningCutoff, // Source: start after lightning portion
+                sourceWidth, towerSourceHeight,    // Source: tower height
+                screenX - drawWidth / 2,
+                towerDrawY,
+                drawWidth,
+                towerDrawHeight
+            );
+
+            // Draw the lightning beam stretched to top of screen (entire animation)
+            ctx.drawImage(
+                this._attackTempCanvas,
+                0, 0,                              // Source: top of video (beam only)
+                sourceWidth, lightningSourceHeight, // Source: lightning height
+                screenX - drawWidth / 2,
+                lightningDrawY,
+                drawWidth,
+                lightningDrawHeight
+            );
+
+            // Falling lightning effect after 2 seconds - burns path around targeted soldier
+            if (this.attackVideo.currentTime >= 2.0) {
+                const fallDuration = this.attackVideo.duration - 2.0;
+                const fallProgress = Math.min(1, (this.attackVideo.currentTime - 2.0) / fallDuration);
+
+                // Get path points from the map
+                const path = this.game.map.path;
+
+                // Use target position captured when attack started
+                // Debug: log what we have
+                if (!this._loggedBurn) {
+                    console.log('Crystal burn target index:', this._burnTargetIndex, 'path length:', path.length);
+                    this._loggedBurn = true;
+                }
+                const targetPathIndex = (this._burnTargetIndex !== null && this._burnTargetIndex !== undefined)
+                    ? this._burnTargetIndex
+                    : Math.floor(path.length * 0.7); // Default to 70% along path (near castle)
+
+                // Burn starts AHEAD of soldier to account for 2s delay + lead time
+                // User requested 3.
+                let burnAheadOffset = 3;
+
+                // FLIP FOR DEFENDER (Red Team moves End -> Start, so "Ahead" is negative)
+                if (this._burnTargetTeam === 'defender') {
+                    burnAheadOffset = -3;
+                }
+
+                const burnLength = 6; // Total waypoints to burn
+
+                // Start point is ahead of target (higher index = further along path toward castle)
+                const burnStartIndex = Math.max(0, Math.min(targetPathIndex + burnAheadOffset, path.length - 1));
+
+                // End point is behind where we started (relative to movement direction)
+                let burnEndIndex;
+                if (this._burnTargetTeam === 'defender') {
+                    // Defender moves End->Start. Lightning starts "Ahead" (lower index) and burns "Back" (higher index)
+                    burnEndIndex = Math.min(burnStartIndex + burnLength, path.length - 1);
+                } else {
+                    // Attacker moves Start->End. Lightning starts "Ahead" (higher index) and burns "Back" (lower index)
+                    burnEndIndex = Math.max(0, burnStartIndex - burnLength);
+                }
+
+                // Calculate range
+                const burnRange = burnEndIndex - burnStartIndex;
+
+                // Calculate exact floating point position
+                const currentFloatIndex = burnStartIndex + (fallProgress * burnRange);
+
+                // Determine segment indices based on direction
+                let segmentIndexA, segmentIndexB;
+                let segmentProgress; // 0..1 along the segment A->B
+
+                if (burnRange >= 0) {
+                    // Forward Direction (e.g. 0 -> 6)
+                    // At 1.2: Segment 1->2. Progress 0.2
+                    segmentIndexA = Math.floor(currentFloatIndex);
+                    segmentIndexB = segmentIndexA + 1;
+                    segmentProgress = currentFloatIndex - segmentIndexA;
+                } else {
+                    // Backward Direction (e.g. 10 -> 4)
+                    // At 9.4: Segment 10->9. Progress 0.6 (10 - 9.4)
+                    segmentIndexA = Math.ceil(currentFloatIndex);
+                    segmentIndexB = segmentIndexA - 1;
+                    segmentProgress = segmentIndexA - currentFloatIndex;
+                }
+
+                // Clamp indices safely
+                const safeP1Index = Math.max(0, Math.min(segmentIndexA, path.length - 1));
+                const safeP2Index = Math.max(0, Math.min(segmentIndexB, path.length - 1));
+
+                // Interpolate Position
+                const p1 = path[safeP1Index];
+                const p2 = path[safeP2Index];
+
+                const currentX = map.offsetX + (p1.x + (p2.x - p1.x) * segmentProgress) * map.scale;
+                const currentY = map.offsetY + (p1.y + (p2.y - p1.y) * segmentProgress) * map.scale;
+
+                ctx.save();
+
+                // Lightning bolt dimensions
+                const beamWidth = 25 * scale;
+                const beamLength = 150 * scale;
+
+                // Draw falling lightning bolt at current interpolated position
+                ctx.drawImage(
+                    this._attackTempCanvas,
+                    0, 0,
+                    sourceWidth, lightningSourceHeight,
+                    currentX - beamWidth,
+                    currentY - beamLength,
+                    beamWidth * 2,
+                    beamLength
+                );
+
+                // Add glow around lightning bolt
+                const glowGradient = ctx.createRadialGradient(currentX, currentY, 0, currentX, currentY, 60 * scale);
+                glowGradient.addColorStop(0, 'rgba(200, 240, 255, 0.6)');
+                glowGradient.addColorStop(0.3, 'rgba(125, 211, 252, 0.4)');
+                glowGradient.addColorStop(1, 'rgba(125, 211, 252, 0)');
+                ctx.fillStyle = glowGradient;
+                ctx.beginPath();
+                ctx.arc(currentX, currentY, 60 * scale, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Burning fire trail - directional
+                ctx.globalCompositeOperation = 'lighter';
+
+                // Draw up to the current SEGMENT start (segmentIndexA)
+                // If Forward (0->6), A=1. Draw 0, 1.
+                // If Backward (10->4), A=10. Draw 10. (Next frame 9.4, A=10. Wait, should we draw 10? Yes path is scorching from start)
+
+                const steps = Math.abs(segmentIndexA - burnStartIndex);
+                for (let k = 0; k <= steps; k++) {
+                    const i = burnStartIndex + (burnRange >= 0 ? k : -k);
+
+                    if (path[i]) {
+                        const px = map.offsetX + path[i].x * map.scale;
+                        const py = map.offsetY + path[i].y * map.scale;
+
+                        // Age based on distance from current LEADING EDGE (currentFloatIndex)
+                        const dist = Math.abs(currentFloatIndex - i);
+                        const fireAge = Math.min(1, dist / Math.abs(burnRange));
+                        const fireSize = 30 * scale * (1 - fireAge * 0.3);
+
+                        const fireGradient = ctx.createRadialGradient(px, py, 0, px, py, fireSize);
+                        fireGradient.addColorStop(0, `rgba(255, 220, 120, ${0.9 - fireAge * 0.4})`);
+                        fireGradient.addColorStop(0.4, `rgba(255, 150, 50, ${0.7 - fireAge * 0.4})`);
+                        fireGradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
+                        ctx.fillStyle = fireGradient;
+                        ctx.beginPath();
+                        ctx.arc(px, py, fireSize, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                // DRAW LEADING FIRE CIRCLE AT EXACT LIGHTNING POSITION (Smoothing)
+                {
+                    const fireSize = 30 * scale; // Full size (fresh)
+                    const fireGradient = ctx.createRadialGradient(currentX, currentY, 0, currentX, currentY, fireSize);
+                    fireGradient.addColorStop(0, 'rgba(255, 220, 120, 0.9)');
+                    fireGradient.addColorStop(0.4, 'rgba(255, 150, 50, 0.7)');
+                    fireGradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
+                    ctx.fillStyle = fireGradient;
+                    ctx.beginPath();
+                    ctx.arc(currentX, currentY, fireSize, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Electric sparks at current position
+                ctx.strokeStyle = 'rgba(200, 240, 255, 0.9)';
+                ctx.lineWidth = 2 * scale;
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i / 6) * Math.PI * 2 + fallProgress * 10;
+                    const sparkLength = (15 + Math.random() * 20) * scale;
+                    ctx.beginPath();
+                    ctx.moveTo(currentX, currentY);
+                    ctx.lineTo(
+                        currentX + Math.cos(angle) * sparkLength,
+                        currentY + Math.sin(angle) * sparkLength
+                    );
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+            // Note: _burnTargetIndex is reset in the 'ended' event listener, not here
         } else if (this.type === 'tower_crystal' && !this.isBuilding) {
             // Crystal Tower Static Image with Chroma Key
             const size = 200 * scale;
