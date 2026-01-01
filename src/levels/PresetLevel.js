@@ -2,7 +2,7 @@ export const PresetLevelConfig = {
     name: "Static Defense Level 1",
     startGoldAttacker: 200,
     startGoldDefender: 0, // Not used
-    allowedUnits: ['unit_basic', 'unit_tank'],
+    allowedUnits: ['unit_basic', 'unit_spider'],
     allowedTowers: [], // Player doesn't see these anyway
     aiStrategy: null, // DISABLE AI
 

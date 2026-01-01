@@ -999,12 +999,7 @@ export class Game {
         const deckUnits = this.deckManager.getCurrentDeckObjects();
 
         const towers = [
-            { id: 'tower_cannon', label: 'Cannon', img: 'assets/towers/Main_tower.png', cost: TowerCosts['tower_cannon'] },
-            { id: 'tower_mage', label: 'Mage', img: 'assets/towers/tower_mage.png', cost: TowerCosts['tower_mage'] },
             { id: 'tower_tesla', label: 'Tesla', img: 'tower_tesla.png', cost: TowerCosts['tower_tesla'] },
-            { id: 'tower_pulse_cannon', label: 'Pulse', img: 'assets/towers/PulseCannon/pulse_cannon.png', cost: TowerCosts['tower_pulse_cannon'] },
-            { id: 'tower_barracks', label: 'Barracks', img: 'assets/towers/Barracks/barracks.png', cost: TowerCosts['tower_barracks'] },
-            { id: 'tower_ice', label: 'Ice', img: 'assets/towers/IceTower/ice_tower.png', cost: TowerCosts['tower_ice'] },
             { id: 'tower_crystal', label: 'Crystal', img: 'assets/towers/CrystalTower/Gemini_Generated_Image_ekb5v6ekb5v6ekb5.png', cost: TowerCosts['tower_crystal'] }
         ];
 
