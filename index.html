@@ -147,6 +147,39 @@
                     </div>
                 </div>
 
+                <!-- Deck Selection Screen (Hidden by default) -->
+                <div id="deck-screen" class="hidden full-screen-overlay">
+                    <div class="deck-container glass-panel">
+                        <button id="deck-back-btn" class="icon-btn close-btn">❌</button>
+                        <div class="deck-header">
+                            <h2>MANAGE ARMY</h2>
+                        </div>
+
+                        <div class="preset-selector">
+                            <div class="preset-label">DECK PRESETS</div>
+                            <div class="preset-buttons">
+                                <button class="preset-btn active" data-preset="0">1</button>
+                                <button class="preset-btn" data-preset="1">2</button>
+                                <button class="preset-btn" data-preset="2">3</button>
+                            </div>
+                        </div>
+
+                        <div class="current-deck-section">
+                            <h3>CURRENT DECK (MAX 6)</h3>
+                            <div id="deck-slots" class="deck-grid">
+                                <!-- Slots injected by JS -->
+                            </div>
+                        </div>
+
+                        <div class="unit-pool-section">
+                            <h3>AVAILABLE UNITS</h3>
+                            <div id="unit-pool" class="pool-grid">
+                                <!-- Units injected by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Settings Modal (Hidden by default) -->
                 <div id="settings-modal" class="hidden">
                     <div class="glass-panel">

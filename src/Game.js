@@ -15,6 +15,7 @@ import { Level1Config } from './levels/Level1.js';
 import { MasterLevelConfig } from './levels/MasterLevel.js';
 import { PresetLevelConfig } from './levels/PresetLevel.js';
 import { AIDefender } from './ai/AIDefender.js';
+import { DeckManager } from './DeckManager.js';
 
 export class Game {
     constructor(canvas) {
@@ -34,6 +35,9 @@ export class Game {
         // --- 4. Network Layer ---
         this.network = new NetworkManager();
         this.network.setCommandHandler((cmd) => this.executeCommand(cmd));
+
+        // --- 4.5 Deck Manager ---
+        this.deckManager = new DeckManager();
 
         // Listen for Role Assignment
         this.network.onRoleAssigned = (role) => {
@@ -423,8 +427,20 @@ export class Game {
 
         // New Menu Interaction Logic
         const playBtn = document.getElementById('play-battle-btn');
-        const modePopup = document.getElementById('mode-select-popup');
-        const modeCloseBtn = document.getElementById('mode-close-btn');
+        const unitsBtn = document.querySelectorAll('.main-menu-btn')[1]; // The second button is UNITS
+        const towersBtn = document.querySelectorAll('.main-menu-btn')[2]; // The third button is TOWERS
+
+        if (unitsBtn && unitsBtn.innerText.includes('UNITS')) {
+            unitsBtn.addEventListener('click', () => {
+                this.openDeckScreen('units');
+            });
+        }
+
+        if (towersBtn && towersBtn.innerText.includes('TOWERS')) {
+            towersBtn.addEventListener('click', () => {
+                this.openDeckScreen('towers');
+            });
+        }
 
         if (playBtn && modePopup) {
             playBtn.addEventListener('click', () => {
@@ -977,17 +993,8 @@ export class Game {
         // Cooldown Overlay Logic (could be refined later)
         const cooldownActive = (performance.now() < this.attackerNextSpawnTime);
 
-        // SIMULTANEOUS PVP: Show ALL cards for both players
-        // Merge Unit and Tower lists
-        const units = [
-            { id: 'unit_basic', label: 'Grunt', img: 'assets/units/soldier/Main_soldier.png', cost: 10 },
-            { id: 'unit_tank', label: 'Tank', img: 'assets/units/unit_tank.png', cost: 30 },
-            { id: 'unit_golem', label: 'Golem', img: 'unit_golem.png', cost: 60 },
-            { id: 'unit_mecha_dino', label: 'Dino', img: 'assets/units/mecha_dino/mecha_dino.png', cost: 100 },
-            { id: 'unit_saber_rider', label: 'Rider', img: 'assets/units/saber_rider.png', cost: 50 },
-            { id: 'unit_crawler', label: 'Crawler', img: 'assets/units/soldier/Main_soldier.png', cost: 15 },
-            { id: 'unit_spider', label: 'Spider', img: 'assets/units/Spider/spider_walk_01.png', cost: 20 }
-        ];
+        // Get Deck for Units
+        const deckUnits = this.deckManager.getCurrentDeckObjects();
 
         const towers = [
             { id: 'tower_cannon', label: 'Cannon', img: 'assets/towers/Main_tower.png', cost: TowerCosts['tower_cannon'] },
@@ -999,7 +1006,13 @@ export class Game {
             { id: 'tower_crystal', label: 'Crystal', img: 'assets/towers/CrystalTower/Gemini_Generated_Image_ekb5v6ekb5v6ekb5.png', cost: TowerCosts['tower_crystal'] }
         ];
 
-        const items = [...units, ...towers];
+        // Combine based on role?
+        // Actually, if we are ATTACKER, we only show deckUnits.
+        // If we are DEFENDER, we only show towers.
+        // But for local testing "Simultaneous", we might want both?
+        // The original code merged them. Let's keep merging for now but replace 'units' with deckUnits.
+
+        const items = [...deckUnits, ...towers];
 
         // Filter for Campaign
         const filteredItems = (this.gamemode === 'campaign')
@@ -1100,5 +1113,187 @@ export class Game {
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') toggle();
         });
+    }
+
+    // --- Deck UI Management ---
+    openDeckScreen(mode = 'units') {
+        const deckScreen = document.getElementById('deck-screen');
+        const closeBtn = document.getElementById('deck-back-btn');
+        const presetBtns = document.querySelectorAll('.preset-btn');
+
+        if (!deckScreen) return;
+
+        // Set Mode
+        this.deckManager.setMode(mode);
+
+        // Show Screen
+        deckScreen.classList.remove('hidden');
+
+        // Close Handler
+        closeBtn.onclick = () => {
+            deckScreen.classList.add('hidden');
+            this.renderCards(); // Refresh main game dock with new deck
+        };
+
+        // Preset Handlers
+        presetBtns.forEach(btn => {
+            btn.onclick = () => {
+                const idx = parseInt(btn.dataset.preset);
+                this.deckManager.setPreset(idx);
+
+                // Update Buttons
+                presetBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                this.renderDeckUI();
+            };
+        });
+
+        // Initialize UI
+        // Update Active Preset Button
+        presetBtns.forEach(b => b.classList.remove('active'));
+        presetBtns[this.deckManager.currentPresetIndex].classList.add('active');
+
+        this.renderDeckUI();
+    }
+
+    renderDeckUI() {
+        const deckSlots = document.getElementById('deck-slots');
+        const unitPool = document.getElementById('unit-pool');
+
+        if (!deckSlots || !unitPool) return;
+
+        // Clear Current
+        deckSlots.innerHTML = '';
+        unitPool.innerHTML = '';
+
+        // Check Mode
+        const mode = this.deckManager.mode; // 'units' or 'towers'
+        // Update Title if needed (Optional: UI Text update)
+        const headerTitle = document.querySelector('.deck-header h2');
+        if (headerTitle) {
+            headerTitle.innerText = (mode === 'units') ? "MANAGE ARMY" : "MANAGE DEFENSE";
+        }
+
+        // Update Section Titles
+        const poolTitle = document.querySelector('.unit-pool-section h3');
+        if (poolTitle) {
+            poolTitle.innerText = (mode === 'units') ? "AVAILABLE UNITS" : "AVAILABLE TOWERS";
+        }
+
+        const currentDeck = this.deckManager.getCurrentDeckObjects();
+        const allItems = this.deckManager.getAllItems(); // Generic call
+
+        // 1. Render Current Deck (Max 6)
+        // We render 6 slots, filled or empty
+        for (let i = 0; i < 6; i++) {
+            let slotElement;
+            if (i < currentDeck.length) {
+                const item = currentDeck[i];
+                slotElement = this.createDeckCard(item, true); // Generic Variable
+            } else {
+                slotElement = document.createElement('div');
+                slotElement.className = 'empty-slot';
+                slotElement.innerText = '+';
+            }
+
+            // Drag Handlers for Drop Logic (Add to Deck)
+            slotElement.ondragover = (e) => {
+                e.preventDefault(); // Allow drop
+                slotElement.classList.add('drag-over');
+                e.dataTransfer.dropEffect = "copy";
+            };
+            slotElement.ondragleave = (e) => {
+                slotElement.classList.remove('drag-over');
+            };
+            slotElement.ondrop = (e) => {
+                e.preventDefault();
+                slotElement.classList.remove('drag-over');
+                const unitId = e.dataTransfer.getData('text/plain');
+                if (unitId) {
+                    const success = this.deckManager.addToDeck(unitId);
+                    if (success) {
+                        this.audio.playClick();
+                        this.renderDeckUI();
+                    }
+                }
+            };
+
+            deckSlots.appendChild(slotElement);
+        }
+
+        // 2. Render Pool (Exclude ones in deck?)
+        // Or show them as disabled/selected? 
+        // Let's show all, but maybe dim ones in deck, or just allow toggling.
+
+        allItems.forEach(item => {
+            const inDeck = this.deckManager.isInDeck(item.id);
+            const card = this.createDeckCard(item, false);
+
+            if (inDeck) {
+                card.style.opacity = "0.5";
+                card.style.filter = "grayscale(1)";
+                card.style.cursor = "default";
+                card.draggable = false; // Cannot drag if already in deck (from pool view)
+                card.onclick = null;
+            } else {
+                card.onclick = () => {
+                    const success = this.deckManager.addToDeck(item.id);
+                    if (success) {
+                        this.audio.playClick();
+                        this.renderDeckUI();
+                    }
+                };
+            }
+            unitPool.appendChild(card);
+        });
+
+        // 3. Setup Drop Zone on Unit Pool (For Removing)
+        unitPool.ondragover = (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+        };
+        unitPool.ondrop = (e) => {
+            e.preventDefault();
+            const itemId = e.dataTransfer.getData('text/plain');
+            // Basic validation: Check if ID exists in deck before removing (DeckManager handles it, but check mode?)
+            // Ideally, we shouldn't cross-drop (unit to tower deck). 
+            // If IDs are distinct, it won't be in deck anyway.
+            if (this.deckManager.removeFromDeck(itemId)) {
+                this.audio.playClick();
+                this.renderDeckUI();
+            }
+        };
+    }
+
+    createDeckCard(unit, isDeckSlot) {
+        const card = document.createElement('div');
+        card.className = 'deck-card';
+        card.draggable = true; // Enable Drag
+
+        card.ondragstart = (e) => {
+            e.dataTransfer.setData('text/plain', unit.id);
+            // Optional: Set drag image or allow default
+            card.style.opacity = '0.5';
+        };
+
+        card.ondragend = (e) => {
+            card.style.opacity = '1';
+        };
+        card.innerHTML = `
+            <img src="${unit.img}">
+            <span>${unit.label}</span>
+            <div class="cost-badge">${unit.cost}</div>
+        `;
+
+        if (isDeckSlot) {
+            card.onclick = () => {
+                this.deckManager.removeFromDeck(unit.id);
+                this.audio.playClick();
+                this.renderDeckUI();
+            };
+        }
+
+        return card;
     }
 }

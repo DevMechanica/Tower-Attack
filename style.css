@@ -1,4 +1,8 @@
 /* Global Reset */
+* {
+    box-sizing: border-box;
+}
+
 body,
 html {
     margin: 0;
@@ -911,5 +915,551 @@ button {
 
     100% {
         transform: rotate(360deg);
+    }
+}
+
+/* --- Deck Management Screen --- */
+#deck-screen {
+    position: absolute;
+    /* FIX: Ensure overlay behavior */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    /* Above everything */
+    background: rgba(0, 0, 0, 0.9);
+    /* Darker background to hide underlying elements */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.deck-container {
+    width: 90%;
+    max-width: 1000px;
+    height: 85vh;
+    /* Increase slightly */
+    max-height: 900px;
+    display: flex;
+    flex-direction: column;
+    padding: 30px;
+    gap: 20px;
+    background: rgba(20, 20, 30, 0.98);
+    /* Almost opaque */
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+    border-radius: 12px;
+}
+
+.deck-header {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    /* Center the title */
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 15px;
+    flex-shrink: 0;
+}
+
+.deck-header h2 {
+    color: #ffd700;
+    margin: 0;
+    font-size: 2rem;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    text-align: center;
+}
+
+.close-btn {
+    position: absolute !important;
+    /* Override icon-btn */
+    top: -10px !important;
+    /* Move up slightly to maximize space */
+    right: -10px !important;
+    left: auto !important;
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 1rem !important;
+    background: rgba(255, 0, 0, 0.3);
+    border: 1px solid rgba(255, 0, 0, 0.5);
+    border-radius: 50%;
+    cursor: pointer;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.2s;
+    padding: 0;
+}
+
+.close-btn:hover {
+    transform: scale(1.1);
+    background: rgba(255, 0, 0, 0.6);
+}
+
+/* Preset Selector */
+.preset-selector {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px 20px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.preset-label {
+    color: #aaa;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.preset-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.preset-btn {
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #444;
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+
+.preset-btn:hover {
+    background: #444;
+}
+
+.preset-btn.active {
+    background: #ffd700;
+    color: #000;
+    border-color: #ffd700;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+/* Sections */
+.current-deck-section {
+    flex-shrink: 0;
+}
+
+.current-deck-section h3,
+.unit-pool-section h3 {
+    color: #4da6ff;
+    border-bottom: 1px solid rgba(77, 166, 255, 0.3);
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+    margin-top: 0;
+}
+
+/* Grid Layouts */
+.deck-grid {
+    display: flex;
+    gap: 15px;
+    min-height: 120px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    overflow-x: auto;
+}
+
+.unit-pool-section {
+    flex-grow: 1;
+    /* Allow this section to take remaining space */
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    /* Crucial for flex scrolling */
+}
+
+.pool-grid {
+    display: grid;
+    grid-template-rows: repeat(2, auto);
+    /* Force 2 rows */
+    grid-auto-flow: column;
+    /* Flow items top-to-bottom, then left-to-right */
+    gap: 30px;
+    /* Increased gap for breathing room */
+    padding: 40px 20px 40px 20px;
+    /* Increased top/bottom padding to prevent clip */
+    height: 100%;
+    overflow-x: auto;
+    /* Horizontal Scroll */
+    overflow-y: auto;
+    /* Allow Vertical Scroll if needed */
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    align-items: center;
+    /* Center items within their tracks if needed */
+}
+
+/* Deck/Pool Cards */
+.deck-card {
+    width: 100px;
+    height: 130px;
+    background: rgba(30, 30, 40, 0.9);
+    border: 1px solid #555;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.deck-card:hover {
+    transform: translateY(-5px);
+    border-color: #fff;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+}
+
+.deck-card img {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    margin-bottom: 10px;
+}
+
+.deck-card span {
+    font-size: 0.8rem;
+    color: #ddd;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.deck-card .cost-badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #ffd700;
+    font-size: 0.7rem;
+    padding: 2px 5px;
+    border-radius: 3px;
+    border: 1px solid #ffd700;
+}
+
+/* Empty Slot Styling */
+.empty-slot {
+    width: 100px;
+    height: 130px;
+    border: 2px dashed #444;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #444;
+    font-size: 2rem;
+}
+
+/* Selected/Active states if needed */
+.deck-card.selected {
+    border-color: #4da6ff;
+    box-shadow: 0 0 10px rgba(77, 166, 255, 0.5);
+}
+
+/* Scrollbar styling for pool */
+.pool-grid::-webkit-scrollbar {
+    width: 6px;
+    /* Vertical scrollbar width (unused here) */
+    height: 6px;
+    /* Horizontal scrollbar height */
+}
+
+/* Drag and Drop Visuals */
+.deck-card.dragging {
+    opacity: 0.5;
+    transform: scale(0.9);
+}
+
+.deck-card.drag-over,
+.empty-slot.drag-over {
+    border-color: #ffd700 !important;
+    background: rgba(255, 215, 0, 0.2);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+.pool-grid::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 3px;
+    margin: 10px;
+    /* Inset */
+}
+
+.pool-grid::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg, #b8860b, #ffd700, #b8860b);
+    border-radius: 3px;
+    box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+    cursor: pointer;
+}
+
+.pool-grid::-webkit-scrollbar-thumb:hover {
+    background: #fff;
+    /* Highlight on hover */
+}
+
+/* --- Mobile Responsiveness for Deck Menu --- */
+/* --- Mobile Responsiveness for Deck Menu --- */
+@media (max-width: 768px) {
+    .deck-container {
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        max-height: none;
+        border-radius: 0;
+        border: none;
+        padding: 15px;
+        /* Enough for safe area */
+        gap: 15px;
+    }
+
+    .deck-header {
+        padding-bottom: 10px;
+    }
+
+    .deck-header h2 {
+        font-size: 1.5rem;
+    }
+
+    /* Preset selector: Allow horizontal scroll if needed */
+    .preset-selector {
+        padding: 5px;
+        gap: 10px;
+        justify-content: center;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .preset-label {
+        display: none;
+    }
+
+    .preset-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 1rem;
+    }
+
+    .current-deck-section h3,
+    .unit-pool-section h3 {
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+        text-align: center;
+    }
+
+    /* Cards Scaling - Dynamic but delimited */
+    .deck-card {
+        width: 80px;
+        height: 110px;
+        flex-shrink: 0;
+    }
+
+    .deck-card img {
+        width: 50px;
+        height: 50px;
+    }
+
+    .deck-card span {
+        font-size: 0.75rem;
+    }
+
+    .empty-slot {
+        width: 80px;
+        height: 110px;
+        font-size: 2rem;
+    }
+
+    /* Compact Grids */
+    .deck-grid {
+        min-height: 125px;
+        /* Fit card + padding */
+        gap: 10px;
+        padding: 5px;
+        justify-content: flex-start;
+        /* Allow scroll */
+    }
+
+    .pool-grid {
+        gap: 15px;
+        padding: 10px 10px 20px 10px;
+        /* Single row on very small screens? No, keep 2 rows but smaller */
+        grid-template-rows: repeat(2, auto);
+        align-content: flex-start;
+    }
+
+    .unit-pool-section {
+        flex: 1;
+        /* Take all remaining space */
+        min-height: 0;
+        overflow: hidden;
+    }
+}
+
+/* --- Landscape Mobile Optimization --- */
+.deck-container {
+    position: relative;
+    /* Anchor for close button */
+}
+
+/* --- Landscape Mobile Optimization --- */
+@media (max-height: 600px) and (orientation: landscape) {
+    .deck-container {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        /* Reduce width slightly */
+        grid-template-rows: auto auto 1fr;
+        grid-template-areas:
+            'header pool'
+            'presets pool'
+            'deck pool';
+        overflow: hidden;
+        padding: 20px;
+        /* Slight increase for edges */
+        gap: 10px;
+    }
+
+    .close-btn {
+        top: 10px !important;
+        right: 10px !important;
+        background: rgba(200, 0, 0, 0.5);
+        width: 35px !important;
+        height: 35px !important;
+        z-index: 10;
+    }
+
+    /* Left Side: Compact */
+    /* Harmonize Font Sizes and Alignment */
+    /* Harmonize Header Alignment with HIGH Specificity */
+    #deck-screen .deck-header,
+    #deck-screen .unit-pool-section h3 {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        height: 50px !important;
+        min-height: 50px !important;
+        max-height: 50px !important;
+        line-height: normal !important;
+        /* Let flex center it */
+
+        font-size: 1.4rem !important;
+        font-weight: 700 !important;
+
+        margin: 0 0 5px 0 !important;
+        padding: 0 0 5px 0 !important;
+
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+        text-align: center !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1px !important;
+        text-shadow: 0 0 5px rgba(255, 215, 0, 0.5) !important;
+
+        width: 100% !important;
+        box-sizing: border-box !important;
+        background: transparent !important;
+        /* Ensure no overlap issues */
+    }
+
+    /* Specific adjust for deck header container vs h3 */
+    .deck-header {
+        grid-area: header;
+    }
+
+    .deck-header h2 {
+        font-size: 1.4rem !important;
+        font-weight: 700 !important;
+        margin: 0;
+        padding: 0;
+        display: inline-block;
+        line-height: normal;
+    }
+
+    .unit-pool-section h3 {
+        /* Override global color specific border if needed */
+        border-bottom-color: rgba(77, 166, 255, 0.3);
+        padding-right: 40px !important;
+        /* Space for close button */
+    }
+
+    .preset-selector {
+        grid-area: presets;
+        padding: 2px;
+        gap: 10px;
+        margin-bottom: 5px;
+    }
+
+    .current-deck-section {
+        grid-area: deck;
+        overflow-y: auto;
+    }
+
+    /* Hide redundant title in landscape to save space */
+    .current-deck-section h3 {
+        display: none;
+    }
+
+    /* Right Side: Pool */
+    .unit-pool-section {
+        grid-area: pool;
+        height: 100%;
+        overflow: hidden;
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+        padding-left: 15px;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+
+    /* Cards Scaling - Visual Consistency */
+    .deck-card {
+        width: 70px;
+        /* Standardize */
+        height: 95px;
+        font-size: 0.7rem;
+    }
+
+    .deck-card img {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 5px;
+    }
+
+    .empty-slot {
+        width: 70px;
+        height: 95px;
+    }
+
+    /* Layout for Deck: 3x2 Grid */
+    .deck-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(2, auto);
+        gap: 5px;
+        overflow: visible;
+        padding-bottom: 10px;
+        justify-items: center;
+        /* Center cards in grid cells */
+    }
+
+    /* Pool Grid: Vertical Scroll */
+    .pool-grid {
+        padding: 10px;
+        grid-auto-flow: row;
+        grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+        grid-template-rows: none;
+        overflow-y: auto;
+        overflow-x: hidden;
+        align-content: flex-start;
+        gap: 10px;
+        justify-items: center;
     }
 }
