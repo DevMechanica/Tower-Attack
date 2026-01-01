@@ -429,6 +429,8 @@ export class Game {
         const playBtn = document.getElementById('play-battle-btn');
         const unitsBtn = document.querySelectorAll('.main-menu-btn')[1]; // The second button is UNITS
         const towersBtn = document.querySelectorAll('.main-menu-btn')[2]; // The third button is TOWERS
+        const modePopup = document.getElementById('mode-select-popup');
+        const modeCloseBtn = document.getElementById('mode-close-btn');
 
         if (unitsBtn && unitsBtn.innerText.includes('UNITS')) {
             unitsBtn.addEventListener('click', () => {
