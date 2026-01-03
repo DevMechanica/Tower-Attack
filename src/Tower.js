@@ -305,20 +305,97 @@ export class Tower {
 
                 this.attackVideo.load();
 
+                // Hit tracking for this attack cycle
+                this._hitTargets = new Set();
+
                 this.attackVideo.play().catch(e => {
                     console.warn('Crystal Tower attack video play blocked:', e);
                 });
 
-                // Handle attack at mid-point of animation
+                // Handle attack damage during animation
                 this.attackVideo.addEventListener('timeupdate', () => {
-                    // Fire projectile at around 40% of the animation
-                    if (this.attackVideo && this.attackVideo.currentTime >= this.attackVideo.duration * 0.4 && !this.hasFired) {
-                        if (target && target.active) {
-                            const projType = 'magic';
-                            this.game.projectiles.push(new Projectile(this.game, this.x, this.y, target, projType));
-                            this.recoil = 0.2;
+                    // Logic for Beam Damage (Starts after 2 seconds, matches visual)
+                    if (this.attackVideo && this.attackVideo.currentTime >= 2.0) {
+                        const fallDuration = this.attackVideo.duration - 2.0;
+                        if (fallDuration <= 0) return;
+
+                        const fallProgress = Math.min(1, (this.attackVideo.currentTime - 2.0) / fallDuration);
+                        const path = this.game.map.path;
+
+                        // Re-calculate visual position logic (copied from render to ensure sync)
+                        const targetPathIndex = (this._burnTargetIndex !== null && this._burnTargetIndex !== undefined)
+                            ? this._burnTargetIndex
+                            : Math.floor(path.length * 0.7);
+
+                        let burnAheadOffset = 3;
+                        if (this._burnTargetTeam === 'defender') {
+                            burnAheadOffset = -3;
                         }
-                        this.hasFired = true;
+
+                        const burnLength = 6;
+                        const burnStartIndex = Math.max(0, Math.min(targetPathIndex + burnAheadOffset, path.length - 1));
+
+                        let burnEndIndex;
+                        if (this._burnTargetTeam === 'defender') {
+                            burnEndIndex = Math.min(burnStartIndex + burnLength, path.length - 1);
+                        } else {
+                            burnEndIndex = Math.max(0, burnStartIndex - burnLength);
+                        }
+
+                        const burnRange = burnEndIndex - burnStartIndex;
+                        const currentFloatIndex = burnStartIndex + (fallProgress * burnRange);
+
+                        // Calculate Interpolation
+                        let segmentIndexA;
+                        let segmentProgress;
+
+                        if (burnRange >= 0) {
+                            segmentIndexA = Math.floor(currentFloatIndex);
+                            segmentProgress = currentFloatIndex - segmentIndexA;
+                        } else {
+                            segmentIndexA = Math.ceil(currentFloatIndex);
+                            segmentProgress = segmentIndexA - currentFloatIndex;
+                        }
+
+                        let p1Index, p2Index;
+                        if (burnRange >= 0) {
+                            p1Index = segmentIndexA;
+                            p2Index = segmentIndexA + 1;
+                        } else {
+                            p1Index = segmentIndexA;
+                            p2Index = segmentIndexA - 1;
+                        }
+
+                        const safeP1 = Math.max(0, Math.min(p1Index, path.length - 1));
+                        const safeP2 = Math.max(0, Math.min(p2Index, path.length - 1));
+
+                        const p1 = path[safeP1];
+                        const p2 = path[safeP2];
+
+                        // Current Beam World Coordinates
+                        const wx = p1.x + (p2.x - p1.x) * segmentProgress;
+                        const wy = p1.y + (p2.y - p1.y) * segmentProgress;
+
+                        // Check collisions with all units
+                        const hitRadius = 40; // Generous hit radius
+                        const damage = 45; // High damage
+
+                        this.game.units.forEach(u => {
+                            if (u.active && !this._hitTargets.has(u)) {
+                                const dx = u.x - wx;
+                                const dy = u.y - wy;
+                                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                                if (dist < hitRadius) {
+                                    u.takeDamage(damage);
+                                    this._hitTargets.add(u);
+                                    // Visual feedback
+                                    if (this.game.effects) {
+                                        this.game.effects.spawnExplosion(u.x, u.y);
+                                    }
+                                }
+                            }
+                        });
                     }
                 });
 
@@ -327,6 +404,7 @@ export class Tower {
                     this.hasFired = false;
                     this._burnTargetIndex = null; // Reset for next attack
                     this._burnTargetTeam = null;
+                    this._hitTargets = null;
                 });
             }
             return;
