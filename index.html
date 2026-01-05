@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tower Attack</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="layout_fixes.css">
 </head>
 
 <body>
@@ -81,147 +82,217 @@
 
 
             <!-- Welcome Screen -->
-            <!-- Main Menu / Welcome Screen -->
-            <div id="welcome-screen" class="main-menu-bg">
+            <!-- Main Menu / Welcome Screen (REFACTORED) -->
+            <div id="app-root-menu">
 
-                <!-- Background Video -->
-                <video id="menu-bg-video" autoplay muted loop playsinline>
-                    <source src="assets/maps/Default/a19be687-ec10-421d-8d5a-556fcd208e55.mp4" type="video/mp4">
-                </video>
-
-                <!-- Left Sidebar -->
-                <div class="menu-sidebar">
-                    <!-- Profile Header -->
-                    <div class="profile-header">
-                        <div class="profile-avatar-frame">
-                            <img src="assets/units/soldier/Main_soldier.png" alt="Profile" class="profile-img">
-                            <div class="level-badge">25</div>
-                        </div>
-                        <div class="profile-details">
-                            <div class="profile-name">Elara</div>
-                            <div class="profile-rank">Knight</div>
-                        </div>
-                    </div>
-
-                    <!-- Sidebar Currency (Relocated) -->
-                    <div class="sidebar-currency-display">
-                        <div class="currency-item">
-                            <div class="currency-icon token">⚔️</div>
-                            <div class="currency-value">500</div>
-                        </div>
-                        <div class="currency-item">
-                            <div class="currency-icon gold">📀</div>
-                            <div class="currency-value">1136</div>
-                        </div>
-                        <div class="currency-item">
-                            <div class="currency-icon gem">💎</div>
-                            <div class="currency-value">50</div>
-                        </div>
-                    </div>
-
-                    <!-- Main Navigation -->
-                    <div class="main-nav-buttons">
-                        <button id="play-battle-btn" class="main-menu-btn primary-gold">PLAY BATTLE</button>
-                        <button class="main-menu-btn">UNITS</button>
-                        <button class="main-menu-btn">TOWERS</button>
-                        <button class="main-menu-btn">SHOP</button>
-                        <button id="main-settings-btn" class="main-menu-btn">SETTINGS</button>
-                        <button class="main-menu-btn">CLAN</button>
-                    </div>
-                </div>
-
-                <!-- Game Logo Centered Top -->
-                <div class="game-logo-container">
-                    <h1 class="main-logo-text">TOWER ATTACK</h1>
-                </div>
-
-                <!-- Mode Selection Modal (Hidden by default, triggered by PLAY BATTLE) -->
-                <div id="mode-select-popup" class="hidden">
-                    <div class="glass-panel">
-                        <h2>CHOOSE MODE</h2>
-                        <div class="welcome-buttons">
-                            <button id="campaign-btn" class="primary-btn big-play-btn">CAMPAIGN</button>
-                            <button id="multiplayer-btn" class="secondary-btn big-play-btn">MULTIPLAYER</button>
-                            <button id="mode-close-btn" class="secondary-btn big-play-btn">BACK</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Deck Selection Screen (Hidden by default) -->
-                <div id="deck-screen" class="hidden full-screen-overlay">
-                    <div class="deck-container glass-panel">
-                        <button id="deck-back-btn" class="icon-btn close-btn">❌</button>
-                        <div class="deck-header">
-                            <h2>MANAGE ARMY</h2>
-                        </div>
-
-                        <div class="preset-selector">
-                            <div class="preset-label">DECK PRESETS</div>
-                            <div class="preset-buttons">
-                                <button class="preset-btn active" data-preset="0">1</button>
-                                <button class="preset-btn" data-preset="1">2</button>
-                                <button class="preset-btn" data-preset="2">3</button>
+                <!-- TOP SECTION: Profile, Currency, Settings -->
+                <div class="menu-section-top">
+                    <div class="top-bar-container">
+                        <!-- Profile -->
+                        <div class="profile-header-top">
+                            <div class="profile-avatar-frame-small">
+                                <img src="assets/Icons/Profile.png" alt="Profile">
+                                <div class="level-badge-small">25</div>
+                            </div>
+                            <div class="profile-info-top">
+                                <span class="profile-name-top">Elara</span>
+                                <span class="profile-rank-top">Knight</span>
                             </div>
                         </div>
 
-                        <div class="current-deck-section">
-                            <h3>CURRENT DECK (MAX 6)</h3>
-                            <div id="deck-slots" class="deck-grid">
-                                <!-- Slots injected by JS -->
+                        <!-- Currency -->
+                        <div class="top-currency-display">
+                            <div class="currency-item-top">
+                                <span class="icon">⚔️</span> <span class="val">500</span>
+                            </div>
+                            <div class="currency-item-top">
+                                <span class="icon">📀</span> <span class="val">1,136</span>
+                            </div>
+                            <div class="currency-item-top">
+                                <span class="icon">💎</span> <span class="val">50</span>
                             </div>
                         </div>
 
-                        <div class="unit-pool-section">
-                            <h3>AVAILABLE UNITS</h3>
-                            <div id="unit-pool" class="pool-grid">
-                                <!-- Units injected by JS -->
-                            </div>
+                        <!-- Settings Icon -->
+                        <div class="top-settings-container">
+                            <button id="main-settings-btn" class="icon-btn-top">⚙️</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Settings Modal (Hidden by default) -->
-                <div id="settings-modal" class="hidden">
-                    <div class="glass-panel">
-                        <h2>SETTINGS</h2>
-                        <div class="settings-control">
-                            <label for="volume-slider"
-                                style="color: #ffd700; font-size: 1.2rem; display: block; margin-bottom: 10px;">MASTER
-                                VOLUME</label>
-                            <input type="range" id="volume-slider" min="0" max="100" value="50"
-                                style="width: 80%; margin-bottom: 20px;">
+                <!-- MIDDLE SECTION: Map, Button, Archer -->
+                <div class="menu-section-middle">
+                    <!-- LEFT ARCHER -->
+                    <div class="left-hero-container">
+                        <img src="assets/Icons/ArcherMenu.png" alt="Archer" class="left-hero-img">
+                    </div>
+
+                    <!-- Center: Map (Now Chibby Map) -->
+                    <div class="dashboard-container">
+                        <div class="map-preview-frame">
+                            <img src="assets/Icons/ChibbyMap.png" alt="Chibby Map" class="map-img-content">
+                            <!-- Overlay Text Removed -->
                         </div>
-                        <br>
-                        <button id="settings-close-btn" class="secondary-btn big-play-btn">CLOSE</button>
+
+                        <!-- Battle Button (Below Map) -->
+                        <div class="battle-btn-container">
+                            <button id="play-battle-btn" class="image-play-btn">
+                                <img src="assets/Icons/Battle.png" alt="BATTLE">
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT ARCHER -->
+                    <div class="right-hero-container">
+                        <img src="assets/Icons/ArcherMenuRIght.png" alt="Archer Right" class="right-hero-img">
                     </div>
                 </div>
 
-                <!-- Level Select Modal (Refactored) -->
-                <div id="level-select-screen" class="hidden">
-                    <div class="glass-panel">
-                        <h2>SELECT LEVEL</h2>
-                        <div id="level-list" class="menu-buttons">
-                            <!-- Buttons injected by JS -->
-                        </div>
-                        <button id="level-back-btn" class="secondary-btn big-play-btn">BACK</button>
+                <!-- Right: Archer (Restored) -->
+                <div class="right-character-showcase">
+                    <img src="assets/units/Archer/main_look.png" alt="Archer" class="right-hero-img">
+                </div>
+                <!-- Removed closing div to include bottom section -->
+
+                <!-- BOTTOM SECTION: Dock -->
+                <div class="menu-section-bottom">
+                    <div class="main-menu-dock">
+                        <button id="shop-btn" class="dock-btn">
+                            <img src="assets/Icons/Shop.png" alt="Shop">
+                        </button>
+                        <button id="units-btn" class="dock-btn">
+                            <img src="assets/Icons/Units.png" alt="Units">
+                        </button>
+                        <button id="towers-btn" class="dock-btn">
+                            <img src="assets/Icons/Towers.png" alt="Towers">
+                        </button>
+                        <button id="social-btn" class="dock-btn">
+                            <img src="assets/Icons/Social.png" alt="Social">
+                        </button>
+                        <button id="events-btn" class="dock-btn">
+                            <img src="assets/Icons/Events.png" alt="Events">
+                        </button>
                     </div>
                 </div>
-
-                <!-- Multiplayer Mode Select Modal (Refactored) -->
-                <div id="multiplayer-menu" class="hidden">
-                    <div class="glass-panel">
-                        <h2>MULTIPLAYER MODE</h2>
-                        <div class="menu-buttons">
-                            <button id="mp-local-btn" class="primary-btn big-play-btn">LOCAL (SAME WIFI/LAN)</button>
-                            <button id="mp-online-btn" class="primary-btn big-play-btn">ONLINE</button>
-                            <button id="mp-back-btn" class="secondary-btn big-play-btn">BACK</button>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
+            </div> <!-- End of #app-root-menu -->
 
         </div>
+
+        <!-- Mode Selection Modal (Hidden by default, triggered by PLAY BATTLE) -->
+        <div id="mode-select-popup" class="hidden">
+            <div class="glass-panel">
+                <h2>CHOOSE MODE</h2>
+                <div class="welcome-buttons">
+                    <button id="campaign-btn" class="primary-btn big-play-btn">CAMPAIGN</button>
+                    <button id="multiplayer-btn" class="secondary-btn big-play-btn">MULTIPLAYER</button>
+                    <button id="mode-close-btn" class="secondary-btn big-play-btn">BACK</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deck Selection Screen (Hidden by default) -->
+        <div id="deck-screen" class="hidden full-screen-overlay">
+            <div class="deck-container glass-panel">
+                <button id="deck-back-btn" class="icon-btn close-btn">❌</button>
+                <div class="deck-header">
+                    <h2>MANAGE ARMY</h2>
+                </div>
+
+                <div class="preset-selector">
+                    <div class="preset-label">DECK PRESETS</div>
+                    <div class="preset-buttons">
+                        <button class="preset-btn active" data-preset="0">1</button>
+                        <button class="preset-btn" data-preset="1">2</button>
+                        <button class="preset-btn" data-preset="2">3</button>
+                    </div>
+                </div>
+
+                <div class="current-deck-section">
+                    <h3>CURRENT DECK (MAX 6)</h3>
+                    <div id="deck-slots" class="deck-grid">
+                        <!-- Slots injected by JS -->
+                    </div>
+                </div>
+
+                <div class="unit-pool-section">
+                    <h3>AVAILABLE UNITS</h3>
+                    <div id="unit-pool" class="pool-grid">
+                        <!-- Units injected by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal (Hidden by default) -->
+        <div id="settings-modal" class="hidden">
+            <div class="glass-panel">
+                <h2>SETTINGS</h2>
+                <div class="settings-control">
+                    <label for="volume-slider"
+                        style="color: #ffd700; font-size: 1.2rem; display: block; margin-bottom: 10px;">MASTER
+                        VOLUME</label>
+                    <input type="range" id="volume-slider" min="0" max="100" value="50"
+                        style="width: 80%; margin-bottom: 20px;">
+                </div>
+                <br>
+                <button id="settings-close-btn" class="secondary-btn big-play-btn">CLOSE</button>
+            </div>
+        </div>
+
+        <!-- Level Select Modal (Refactored) -->
+        <div id="level-select-screen" class="hidden">
+            <div class="glass-panel">
+                <h2>SELECT LEVEL</h2>
+                <div id="level-list" class="menu-buttons">
+                    <!-- Buttons injected by JS -->
+                </div>
+                <button id="level-back-btn" class="secondary-btn big-play-btn">BACK</button>
+            </div>
+        </div>
+
+        <!-- Multiplayer Mode Select Modal (Refactored) -->
+        <div id="multiplayer-menu" class="hidden">
+            <div class="glass-panel">
+                <h2>MULTIPLAYER MODE</h2>
+                <div class="menu-buttons">
+                    <button id="mp-local-btn" class="primary-btn big-play-btn">LOCAL (SAME WIFI/LAN)</button>
+                    <button id="mp-online-btn" class="primary-btn big-play-btn">ONLINE</button>
+                    <button id="mp-back-btn" class="secondary-btn big-play-btn">BACK</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shop Modal -->
+        <div id="shop-modal" class="hidden">
+            <div class="glass-panel">
+                <h2>SHOP</h2>
+                <p style="color:white;text-align:center;">STORE COMING SOON</p>
+                <button id="shop-close-btn" class="secondary-btn big-play-btn">CLOSE</button>
+            </div>
+        </div>
+
+        <!-- Social Modal -->
+        <div id="social-modal" class="hidden">
+            <div class="glass-panel">
+                <h2>SOCIAL</h2>
+                <p style="color:white;text-align:center;">CLAN & FRIENDS COMING SOON</p>
+                <button id="social-close-btn" class="secondary-btn big-play-btn">CLOSE</button>
+            </div>
+        </div>
+
+        <!-- Events Modal -->
+        <div id="events-modal" class="hidden">
+            <div class="glass-panel">
+                <h2>EVENTS</h2>
+                <p style="color:white;text-align:center;">NO ACTIVE EVENTS</p>
+                <button id="events-close-btn" class="secondary-btn big-play-btn">CLOSE</button>
+            </div>
+        </div>
+
+
+    </div>
+
+    </div>
     </div>
     <!-- Socket.IO Client Library -->
     <script src="/socket.io/socket.io.js"></script>
