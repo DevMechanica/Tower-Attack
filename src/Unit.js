@@ -88,6 +88,12 @@ export class Unit {
             this.maxHealth = 200;
             this.speed = 100;
             this.radius = 18;
+        } else if (this.type === 'unit_archer') {
+            this.health = 120;
+            this.maxHealth = 120;
+            this.speed = 50;
+            this.radius = 15;
+            this.range = 150; // Increased range for Archer
         }
     }
 
@@ -346,6 +352,20 @@ export class Unit {
             assetName = 'unit_mecha_dino';
         } else if (this.type === 'unit_saber_rider') {
             assetName = 'unit_saber_rider';
+        } else if (this.type === 'unit_archer') {
+            // Directional Logic
+            if (this.lastDy > 0) {
+                // Down-Right / Down-Left
+                assetName = 'archer_walk_down_right';
+                if (this.lastDx < 0) shouldFlip = true;
+            } else {
+                // Up-Right / Up-Left
+                // User provided asset for Top-Left (download 52).
+                assetName = 'archer_walk_up_right';
+                // Since asset is Top-Left, we FLIP if moving Right.
+                if (this.lastDx > 0) shouldFlip = true;
+            }
+            isSequence = false;
         }
 
         // Draw Sprite
@@ -369,6 +389,8 @@ export class Unit {
                 // Start offset logic:
                 let startOffset = 0.2;
                 if (assetName === 'soldier_walk_down_right') startOffset = 0.8;
+                if (assetName === 'archer_walk' || assetName === 'archer_walk_down_right') startOffset = 1.0;
+                if (assetName === 'archer_walk_up_right') startOffset = 0.8;
 
                 // Set random time between startOffset and end
                 clone.currentTime = startOffset + Math.random() * (duration - startOffset - 0.1);
@@ -420,7 +442,11 @@ export class Unit {
                 const actualSpeed = Math.sqrt(dx * dx + dy * dy);
 
                 // Adjust playback rate based on actual movement (smoother animation)
-                const targetRate = Math.max(0.5, Math.min(2, actualSpeed * 0.02));
+                let targetRate = Math.max(0.5, Math.min(2, actualSpeed * 0.02));
+
+                // Speed up Archer
+                if (assetName === 'archer_walk' || assetName === 'archer_walk_down_right' || assetName === 'archer_walk_up_right') targetRate *= 1.5;
+
                 sprite.playbackRate = targetRate;
             }
 
@@ -437,6 +463,22 @@ export class Unit {
             // Specific tweak for download (24) (Down-Right/Down-Left)
             if (assetName === 'soldier_walk_down_right') {
                 startTime = 0.8;
+            } else if (assetName === 'archer_walk' || assetName === 'archer_walk_down_right') {
+                startTime = 1.0;
+            } else if (assetName === 'archer_walk_up_right') {
+                startTime = 0.8;
+            }
+
+            // Custom End Time for Archer Loop
+            let endTime = sprite.duration;
+            if (assetName === 'archer_walk' || assetName === 'archer_walk_down_right') endTime = 2.6;
+            // No custom end time specified for up_right, using default duration or maybe 2.6? 
+            // Let's assume full duration for now unless visual glitches appear, as only start time was requested.
+            // Actually, for safety with other archer clips, let's keep it default unless needed.
+
+            // Enforce Loop Range: IF > endTime, reset to startTime
+            if (sprite.currentTime >= endTime) {
+                sprite.currentTime = startTime;
             }
 
             // Enforce start time (Loop Fix): If video loops to 0, push it back to startOffset
@@ -452,15 +494,22 @@ export class Unit {
             // Video element - render with white background removal
             if (sprite.readyState >= 2) { // HAVE_CURRENT_DATA or better
                 // Calculate proper size - make it bigger
-                const baseHeight = 150 * scale;
+                let baseHeight = 150 * scale;
+                if (assetName.startsWith('archer_walk')) baseHeight = 100 * scale;
 
                 // Crop out black bars on sides by using center 50% of video width
                 // Reduced from 0.70 to 0.50 to fix visible black bars on new assets
-                const cropPercent = 0.50;
+                let cropPercent = 0.50;
+                if (assetName.startsWith('archer_walk')) cropPercent = 0.67;
+                if (assetName === 'archer_walk_up_right') cropPercent = 0.58;
+
                 const sourceX = sprite.videoWidth * (1 - cropPercent) / 2;
                 const sourceWidth = sprite.videoWidth * cropPercent;
                 const sourceY = 0;
-                const sourceHeight = sprite.videoHeight;
+                let sourceHeight = sprite.videoHeight;
+                if (assetName.startsWith('archer_walk')) {
+                    sourceHeight = sprite.videoHeight; // Crop bottom 15%
+                }
 
                 const aspectRatio = sourceWidth / sourceHeight;
                 const drawWidth = baseHeight * aspectRatio;
@@ -554,7 +603,8 @@ export class Unit {
 
             } else if (this._cachedFrame) {
                 // Video not ready yet, use cached frame from previous render to avoid blue dot
-                const baseHeight = 150 * scale;
+                let baseHeight = 150 * scale;
+                if (assetName.startsWith('archer_walk')) baseHeight = 100 * scale;
                 const aspectRatio = this._cachedFrame.width / this._cachedFrame.height;
                 const drawWidth = baseHeight * aspectRatio;
                 const drawHeight = baseHeight;

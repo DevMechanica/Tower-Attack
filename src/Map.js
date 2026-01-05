@@ -85,6 +85,7 @@ export class Map {
         // Load individual assets with explicit paths
         this.loadImage('Main_unit', 'assets/units/soldier/Main_soldier.png');
         this.loadImage('unit_tank', 'assets/units/unit_tank.png');
+        this.loadImage('unit_archer', 'assets/units/Archer/main_look.png');
         this.loadImage('Main_tower', 'assets/towers/Main_tower.png');
         this.loadImage('tower_mage', 'assets/towers/MageTower/TowerMage.png');
         this.loadImage('tower_tesla', 'assets/towers/TeslaTowerAnima/TeslaTower-removebg-preview.png');
@@ -100,6 +101,9 @@ export class Map {
         this.loadVideo('soldier_walk_down_right', 'assets/units/soldier/Soldier_Animations/download (24).mp4');
         this.loadVideo('soldier_walk_up_right', 'assets/units/soldier/Soldier_Animations/download (27).mp4');
         this.loadVideo('soldier_attack', 'assets/units/soldier/Soldier_Animations/download (29).mp4');
+        this.loadVideo('archer_walk', 'assets/units/Archer/Archer_Animations/download (50).mp4');
+        this.loadVideo('archer_walk_down_right', 'assets/units/Archer/Archer_Animations/download (48).mp4');
+        this.loadVideo('archer_walk_up_right', 'assets/units/Archer/Archer_Animations/download (52).mp4');
         this.loadAnimation('spider_walk', 'assets/units/Spider/spider_walk', 5, 'png');
         this.loadAnimation('spider_walk_right', 'assets/units/Spider/Right_Movement/spider_walk_right', 5, 'png');
         this.loadAnimation('spider_walk_up', 'assets/units/Spider/Up_Movement/spider_walk_up', 6, 'png');

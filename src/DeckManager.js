@@ -1,12 +1,13 @@
 
 export class DeckManager {
     constructor() {
-        this.STORAGE_KEY_UNITS = 'tower_attack_deck_data';
+        this.STORAGE_KEY_UNITS = 'tower_attack_deck_data_v2';
         this.STORAGE_KEY_TOWERS = 'tower_attack_deck_data_towers';
 
         // Define all available units
         this.allUnits = [
             { id: 'unit_basic', label: 'Grunt', img: 'assets/units/soldier/Main_soldier.png', cost: 10, description: "Basic infantry unit." },
+            { id: 'unit_archer', label: 'Archer', img: 'assets/units/Archer/main_look.png', cost: 15, description: "Ranged unit." },
             { id: 'unit_spider', label: 'Spider', img: 'assets/units/Spider/spider_walk_01.png', cost: 20, description: "Disables and drains towers." }
         ];
 
@@ -19,7 +20,7 @@ export class DeckManager {
 
         // Default Presets
         this.defaultUnitPresets = [
-            ['unit_basic', 'unit_spider'],
+            ['unit_basic', 'unit_archer'],
             ['unit_spider', 'unit_basic'],
             ['unit_basic', 'unit_basic']
         ];
