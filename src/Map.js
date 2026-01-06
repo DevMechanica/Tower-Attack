@@ -148,13 +148,18 @@ export class Map {
         this.loadImage('tower_pulse_cannon', 'assets/towers/PulseCannon/pulse_cannon.png');
         this.loadImage('tower_barracks', 'assets/towers/Barracks/barracks.png');
         this.loadImage('tower_ice', 'assets/towers/IceTower/ice_tower.png');
-        this.loadImage('tower_crystal', 'assets/towers/CrystalTower/Gemini_Generated_Image_ekb5v6ekb5v6ekb5.png');
+        this.loadImage('tower_crystal', 'assets/towers/CrystalTower/Gemini_Generated_Image_ekb5v6ekb5v6ekb5.png'); // Fallback until captured frame is ready
 
         // Crystal Tower Build Animation (Video)
         this.loadVideo('tower_crystal_build', 'assets/towers/CrystalTower/download (31).mp4'); // Non-looping handled in Tower.js cloning
 
         // Crystal Tower Attack Animation (Video)
         this.loadVideo('tower_crystal_attack', 'assets/towers/CrystalTower/AttackAnimation/download (27).mp4'); // Non-looping handled in Tower.js cloning
+
+        // Ivy Tower - Poison Cloud Tower
+        this.loadImage('tower_ivy', 'assets/towers/IvyTower/Gemini_Generated_Image_qdl7cqqdl7cqqdl7.png');
+        this.loadVideo('tower_ivy_build', 'assets/towers/IvyTower/download (54).mp4'); // Build animation
+        this.loadVideo('tower_ivy_attack', 'assets/towers/IvyTower/download (53).mp4'); // Smoke animation
 
         this.loaded = false;
 

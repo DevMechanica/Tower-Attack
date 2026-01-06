@@ -3,7 +3,7 @@ export const MasterLevelConfig = {
     startGoldAttacker: 5000, // Rich start for testing
     startGoldDefender: 5000,
     allowedUnits: ['unit_basic', 'unit_archer', 'unit_spider'],
-    allowedTowers: ['tower_tesla', 'tower_crystal'],
+    allowedTowers: ['tower_tesla', 'tower_crystal', 'tower_ivy'],
     aiStrategy: 'random_pressure',
     winCondition: {
         type: 'destroy_base',

@@ -15,7 +15,8 @@ export class DeckManager {
         this.allTowers = [
 
             { id: 'tower_tesla', label: 'Tesla', img: 'tower_tesla.png', cost: 200, description: "Chain lightning attack." },
-            { id: 'tower_crystal', label: 'Crystal', img: 'assets/towers/CrystalTower/Gemini_Generated_Image_ekb5v6ekb5v6ekb5.png', cost: 400, description: "Powerful long range laser." }
+            { id: 'tower_crystal', label: 'Crystal', img: 'assets/towers/CrystalTower/Gemini_Generated_Image_ekb5v6ekb5v6ekb5.png', cost: 400, description: "Powerful long range laser." },
+            { id: 'tower_ivy', label: 'IvyTower', img: 'assets/towers/IvyTower/Gemini_Generated_Image_qdl7cqqdl7cqqdl7.png', cost: 180, description: "Releases toxic clouds that slow enemies." }
         ];
 
         // Default Presets

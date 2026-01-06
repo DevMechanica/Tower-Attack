@@ -95,6 +95,42 @@ export class Tower {
                 this.isBuilding = false; // Fallback
             }
         }
+
+        // Ivy Tower - Poison Cloud Attack Logic
+        if (this.type === 'tower_ivy') {
+            this.isBuilding = true;
+            this.range = 200; // Medium range
+            this.color = '#22c55e'; // Green
+            this.attackVideo = null; // Will hold the smoke animation video when attacking
+            this.maxCooldown = 6000; // 6 second attack rate (matches smoke + cloud generation)
+            this.cloudSpawned = false; // Track if cloud was spawned for current attack
+
+            // Clone build video so it plays independently per tower
+            const buildVideoAsset = this.game.map.assets['tower_ivy_build'];
+            if (buildVideoAsset) {
+                this.buildVideo = buildVideoAsset.cloneNode(true);
+                this.buildVideo.loop = false;
+                this.buildVideo.muted = true;
+                this.buildVideo.playbackRate = 1.0;
+                this.buildVideo.currentTime = 0.5; // Start at 0.5 seconds (same as CrystalTower)
+
+                // Load the video first
+                this.buildVideo.load();
+
+                // Play with promise handling
+                this.buildVideo.play().catch(e => {
+                    console.warn('Ivy Tower build video autoplay blocked:', e);
+                });
+
+                this.buildVideo.addEventListener('ended', () => {
+                    this.isBuilding = false;
+                    this.buildVideo = null; // Cleanup
+                });
+            } else {
+                console.warn("Ivy Tower build video not found!");
+                this.isBuilding = false; // Fallback
+            }
+        }
     }
 
     takeDamage(amount) {
@@ -410,6 +446,53 @@ export class Tower {
             return;
         }
 
+        // Ivy Tower Attack - Smoke Animation with Acid Cloud Spawn
+        if (this.type === 'tower_ivy') {
+            // Don't start a new attack if one is already playing
+            if (this.attackVideo) {
+                return;
+            }
+
+            // Store target position for cloud spawning
+            const targetX = target ? target.x : this.x;
+            const targetY = target ? target.y : this.y;
+
+            // Trigger smoke animation video
+            const attackVideoAsset = this.game.map.assets['tower_ivy_attack'];
+            if (attackVideoAsset) {
+                this.attackVideo = attackVideoAsset.cloneNode(true);
+                this.attackVideo.loop = false;
+                this.attackVideo.muted = true;
+                this.attackVideo.playbackRate = 1.0;
+                this.attackVideo.currentTime = 0;
+
+                this.attackVideo.load();
+
+                this.cloudSpawned = false; // Reset flag
+
+                this.attackVideo.play().catch(e => {
+                    console.warn('Ivy Tower attack video play blocked:', e);
+                });
+
+                // Spawn acid cloud at ~2 seconds into animation
+                this.attackVideo.addEventListener('timeupdate', () => {
+                    if (this.attackVideo && this.attackVideo.currentTime >= 2.0 && !this.cloudSpawned) {
+                        // Spawn the acid cloud effect
+                        if (this.game.effects && this.game.effects.spawnAcidCloud) {
+                            this.game.effects.spawnAcidCloud(targetX, targetY);
+                        }
+                        this.cloudSpawned = true;
+                    }
+                });
+
+                this.attackVideo.addEventListener('ended', () => {
+                    this.attackVideo = null; // Cleanup
+                    this.cloudSpawned = false;
+                });
+            }
+            return;
+        }
+
         // Create projectile (Cannon only now, or others)
         const projType = (this.type === 'tower_cannon') ? 'bullet' : 'magic';
         this.game.projectiles.push(new Projectile(this.game, this.x, this.y, target, projType));
@@ -456,6 +539,7 @@ export class Tower {
         if (this.type === 'tower_barracks') assetName = 'tower_barracks';
         if (this.type === 'tower_ice') assetName = 'tower_ice';
         if (this.type === 'tower_crystal') assetName = 'tower_crystal';
+        if (this.type === 'tower_ivy') assetName = 'tower_ivy';
 
         // if (this.recoil > 0 && this.type === 'tower_cannon') {
         //    assetName = 'Main_tower_attack';
@@ -548,6 +632,145 @@ export class Tower {
                     drawHeight
                 );
             }
+        } else if (this.type === 'tower_ivy' && this.isBuilding && this.buildVideo) {
+            // Ivy Tower Build Animation with Chroma Key
+            // Only process if video is ready
+            if (this.buildVideo.readyState >= 2 && this.buildVideo.videoWidth > 0) {
+                const size = 300 * scale; // Increased for better visibility
+
+                // Crop black bars like other animations
+                const cropPercent = 0.50; // Use center 50% of video width
+                const sourceX = this.buildVideo.videoWidth * (1 - cropPercent) / 2;
+                const sourceWidth = this.buildVideo.videoWidth * cropPercent;
+                const sourceY = 0;
+                const sourceHeight = this.buildVideo.videoHeight;
+
+                const aspectRatio = sourceWidth / sourceHeight;
+                const drawWidth = size * aspectRatio;
+                const drawHeight = size;
+                const yOffset = 50 * scale;
+
+                // Create temp canvas for processing if not exists
+                if (!this._ivyBuildTempCanvas) {
+                    this._ivyBuildTempCanvas = document.createElement('canvas');
+                }
+                this._ivyBuildTempCanvas.width = sourceWidth;
+                this._ivyBuildTempCanvas.height = sourceHeight;
+                const tempCtx = this._ivyBuildTempCanvas.getContext('2d', { willReadFrequently: true });
+
+                // Draw cropped video to temp canvas
+                tempCtx.drawImage(this.buildVideo, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
+
+                // Process Pixel Data (Chroma Key - White & Black Background Removal)
+                const imageData = tempCtx.getImageData(0, 0, this._ivyBuildTempCanvas.width, this._ivyBuildTempCanvas.height);
+                const data = imageData.data;
+
+                const bgThreshold = 245; // White threshold
+                const shadowThreshold = 180;
+                const saturationThreshold = 30;
+                const blackThreshold = 50; // Black threshold
+
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    const maxVal = Math.max(r, g, b);
+                    const minVal = Math.min(r, g, b);
+                    const range = maxVal - minVal;
+
+                    // Remove pure black
+                    if (maxVal < blackThreshold) {
+                        data[i + 3] = 0; // Black -> transparent
+                    }
+                    // Remove white/grey background (low saturation)
+                    else if (range < saturationThreshold) {
+                        if (maxVal > bgThreshold) {
+                            data[i + 3] = 0; // White -> transparent
+                        } else if (maxVal > shadowThreshold) {
+                            data[i] = 0;
+                            data[i + 1] = 0;
+                            data[i + 2] = 0;
+                            data[i + 3] = 120; // Grey -> semi-transparent shadow
+                        }
+                    }
+                }
+                tempCtx.putImageData(imageData, 0, 0);
+
+                // Draw Processed Canvas
+                ctx.drawImage(
+                    this._ivyBuildTempCanvas,
+                    screenX - drawWidth / 2,
+                    screenY - drawHeight / 2 - yOffset,
+                    drawWidth,
+                    drawHeight
+                );
+            }
+        } else if (this.type === 'tower_ivy' && this.attackVideo && this.attackVideo.readyState >= 2) {
+            // Ivy Tower Attack Animation - Smoke Video with Chroma Key
+            const size = 300 * scale; // Match build video size
+
+            const sourceX = 0;
+            const sourceWidth = this.attackVideo.videoWidth;
+            const sourceY = 0;
+            const sourceHeight = this.attackVideo.videoHeight;
+
+            const aspectRatio = sourceWidth / sourceHeight;
+            const drawWidth = size * aspectRatio;
+            const drawHeight = size;
+            const yOffset = 50 * scale;
+
+            // Create temp canvas for chroma keying
+            if (!this._ivyTempCanvas) {
+                this._ivyTempCanvas = document.createElement('canvas');
+            }
+            this._ivyTempCanvas.width = sourceWidth;
+            this._ivyTempCanvas.height = sourceHeight;
+            const tempCtx = this._ivyTempCanvas.getContext('2d', { willReadFrequently: true });
+
+            // Draw video to temp canvas
+            tempCtx.drawImage(this.attackVideo, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
+
+            // Chroma key processing
+            const imageData = tempCtx.getImageData(0, 0, this._ivyTempCanvas.width, this._ivyTempCanvas.height);
+            const data = imageData.data;
+
+            const bgThreshold = 245;
+            const shadowThreshold = 180;
+            const saturationThreshold = 30;
+            const blackThreshold = 50;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const maxVal = Math.max(r, g, b);
+                const minVal = Math.min(r, g, b);
+                const range = maxVal - minVal;
+
+                if (maxVal < blackThreshold) {
+                    data[i + 3] = 0;
+                }
+                else if (range < saturationThreshold) {
+                    if (maxVal > bgThreshold) {
+                        data[i + 3] = 0;
+                    } else if (maxVal > shadowThreshold) {
+                        data[i] = 0;
+                        data[i + 1] = 0;
+                        data[i + 2] = 0;
+                        data[i + 3] = 120;
+                    }
+                }
+            }
+            tempCtx.putImageData(imageData, 0, 0);
+
+            // Draw processed smoke animation
+            ctx.drawImage(
+                this._ivyTempCanvas,
+                screenX - drawWidth / 2,
+                screenY - drawHeight / 2 - yOffset,
+                drawWidth,
+                drawHeight
+            );
         } else if (this.type === 'tower_crystal' && this.attackVideo && this.attackVideo.readyState >= 2) {
             // Crystal Tower Attack Animation
             const size = 200 * scale;
@@ -814,9 +1037,9 @@ export class Tower {
                 ctx.restore();
             }
             // Note: _burnTargetIndex is reset in the 'ended' event listener, not here
-        } else if (this.type === 'tower_crystal' && !this.isBuilding) {
-            // Crystal Tower Static Image with Chroma Key
-            const size = 200 * scale;
+        } else if ((this.type === 'tower_crystal' || this.type === 'tower_ivy') && !this.isBuilding) {
+            // Crystal Tower & Ivy Tower Static Image with Chroma Key
+            const size = this.type === 'tower_ivy' ? 300 * scale : 200 * scale; // IvyTower is bigger
             const cacheKey = `processed_${assetName}`;
 
             // Check if we have a processed version in Game Cache (stored as canvas)
@@ -907,24 +1130,7 @@ export class Tower {
                 yOffset = 15;
             }
 
-            // Draw drop shadow at the base of where the tower visually sits
-            const shadowY = screenY + drawHeight / 2 - (yOffset * scale); // At the bottom of the visible tower
-            const shadowWidth = 70 * scale; // Wider shadow for towers
-            const shadowHeight = 25 * scale; // Shadow height (ellipse)
-
-            ctx.save();
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; // Darker shadow for visibility
-            ctx.beginPath();
-            ctx.ellipse(
-                screenX,
-                shadowY,
-                shadowWidth / 2,
-                shadowHeight / 2,
-                0, 0, Math.PI * 2
-            );
-            ctx.fill();
-            ctx.restore();
-
+            // Draw tower sprite (shadow removed for cleaner look)
             ctx.drawImage(
                 sprite,
                 0, 0, sprite.width, sprite.height,
@@ -1005,5 +1211,6 @@ export const TowerCosts = {
     'tower_pulse_cannon': 60,
     'tower_barracks': 90,
     'tower_ice': 120,
-    'tower_crystal': 200
+    'tower_crystal': 200,
+    'tower_ivy': 180
 };

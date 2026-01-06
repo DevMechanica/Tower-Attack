@@ -39,6 +39,10 @@ export class Unit {
         this.attackAnim = 0;
         this.direction = 'right'; // Track movement direction for directional sprites
 
+        // Slow Effect System
+        this.speedModifier = 1.0; // Multiplier for speed (1.0 = normal, 0.5 = 50% slow)
+        this.slowEffects = []; // Track active slow effects
+
         // Combat Cooldown
         this.cooldown = 0;
         this.maxCooldown = 1200; // ms
@@ -107,10 +111,49 @@ export class Unit {
         }
     }
 
+    applySlowEffect(slowFactor, duration) {
+        // Check if already has this slow effect (don't stack intensity)
+        const existing = this.slowEffects.find(e => e.slowFactor === slowFactor);
+        if (existing) {
+            // Refresh duration instead of stacking
+            existing.remaining = Math.max(existing.remaining, duration);
+            return;
+        }
+
+        // Add new slow effect
+        this.slowEffects.push({
+            slowFactor: slowFactor,
+            remaining: duration
+        });
+
+        // Recalculate speed modifier
+        this.updateSpeedModifier();
+    }
+
+    updateSpeedModifier() {
+        // Find strongest slow (lowest factor)
+        if (this.slowEffects.length === 0) {
+            this.speedModifier = 1.0;
+            return;
+        }
+
+        this.speedModifier = Math.min(...this.slowEffects.map(e => e.slowFactor));
+    }
+
     update(deltaTime) {
         if (!this.active) return;
 
         if (this.cooldown > 0) this.cooldown -= deltaTime;
+
+        // Update slow effects
+        if (this.slowEffects.length > 0) {
+            this.slowEffects.forEach(effect => {
+                effect.remaining -= deltaTime;
+            });
+            this.slowEffects = this.slowEffects.filter(e => e.remaining > 0);
+            this.updateSpeedModifier();
+        }
+
         if (this.attackAnim > 0) {
             this.attackAnim -= deltaTime / 1000;
             if (this.attackAnim < 0) this.attackAnim = 0;
@@ -160,8 +203,8 @@ export class Unit {
         if (distance < 5) {
             this.currentPointIndex++;
         } else {
-            const moveX = (dx / distance) * this.speed * (deltaTime / 1000);
-            const moveY = (dy / distance) * this.speed * (deltaTime / 1000);
+            const moveX = (dx / distance) * this.speed * this.speedModifier * (deltaTime / 1000);
+            const moveY = (dy / distance) * this.speed * this.speedModifier * (deltaTime / 1000);
             this.x += moveX;
             this.y += moveY;
 

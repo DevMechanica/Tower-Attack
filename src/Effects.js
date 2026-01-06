@@ -16,6 +16,10 @@ export class EffectManager {
         this.effects.push(new Lightning(this.game, x1, y1, x2, y2));
     }
 
+    spawnAcidCloud(x, y) {
+        this.effects.push(new AcidCloud(this.game, x, y));
+    }
+
     update(deltaTime) {
         this.effects.forEach(effect => effect.update(deltaTime));
         this.effects = this.effects.filter(effect => effect.active);
@@ -189,5 +193,103 @@ class Lightning {
         });
         ctx.stroke();
         ctx.restore();
+    }
+}
+
+class AcidCloud {
+    constructor(game, x, y) {
+        this.game = game;
+        this.x = x;
+        this.y = y;
+        this.active = true;
+        this.life = 8.0; // 8 seconds duration
+        this.radius = 100; // Area of effect
+        this.particleTimer = 0;
+        this.particles = []; // Acid rain particles
+
+        // Slow effect parameters
+        this.slowFactor = 0.5; // 50% speed reduction
+        this.slowDuration = 3000; // 3 seconds in ms
+    }
+
+    update(deltaTime) {
+        // Decay lifetime
+        this.life -= deltaTime / 1000;
+        if (this.life <= 0) {
+            this.active = false;
+            return;
+        }
+
+        // Spawn acid rain particles periodically
+        this.particleTimer += deltaTime;
+        if (this.particleTimer >= 100) { // Every 100ms
+            this.particleTimer = 0;
+            // Create falling acid particle
+            this.particles.push({
+                x: this.x + (Math.random() - 0.5) * this.radius * 2,
+                y: this.y - 50,
+                vy: 80, // Fall speed
+                life: 1.0,
+                size: Math.random() * 3 + 2
+            });
+        }
+
+        // Update particles
+        this.particles.forEach(p => {
+            p.y += p.vy * (deltaTime / 1000);
+            p.life -= deltaTime / 1000;
+        });
+        this.particles = this.particles.filter(p => p.life > 0);
+
+        // Apply slow effect to enemies in range
+        this.game.units.forEach(unit => {
+            if (!unit.active) return;
+
+            const dx = unit.x - this.x;
+            const dy = unit.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < this.radius) {
+                // Apply slow effect
+                if (unit.applySlowEffect) {
+                    unit.applySlowEffect(this.slowFactor, this.slowDuration);
+                }
+            }
+        });
+    }
+
+    render(ctx, map) {
+        const screenX = map.offsetX + this.x * map.scale;
+        const screenY = map.offsetY + this.y * map.scale;
+
+        // Draw green cloud (pulsing gradient)
+        const alpha = Math.min(0.6, this.life / 8.0 * 0.6);
+        const pulse = 0.9 + Math.sin(Date.now() / 200) * 0.1;
+        const cloudRadius = this.radius * map.scale * pulse;
+
+        const gradient = ctx.createRadialGradient(
+            screenX, screenY, 0,
+            screenX, screenY, cloudRadius
+        );
+        gradient.addColorStop(0, `rgba(100, 255, 100, ${alpha})`);
+        gradient.addColorStop(0.5, `rgba(50, 200, 50, ${alpha * 0.6})`);
+        gradient.addColorStop(1, 'rgba(0, 150, 0, 0)');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, cloudRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw acid rain particles
+        ctx.fillStyle = 'rgba(150, 255, 100, 0.8)';
+        this.particles.forEach(p => {
+            const px = map.offsetX + p.x * map.scale;
+            const py = map.offsetY + p.y * map.scale;
+            const size = p.size * map.scale;
+
+            ctx.beginPath();
+            ctx.arc(px, py, size, 0, Math.PI * 2);
+            ctx.fill();
+        });
     }
 }
