@@ -404,8 +404,10 @@ export class Game {
         const roleBtn = document.getElementById('role-switch-btn');
         const menuBtn = document.getElementById('menu-btn');
         const matchWidget = document.getElementById('matchmaking-status'); // NEW
+        const appRootMenu = document.getElementById('app-root-menu'); // NEW MENU ROOT
 
         if (welcomeScreen) welcomeScreen.classList.add('hidden');
+        if (appRootMenu) appRootMenu.classList.add('hidden'); // CRITICAL FIX: Hide new menu
         if (matchWidget) matchWidget.classList.add('hidden'); // Fix: Hide widget if game starts
         if (hudTop) hudTop.classList.remove('hidden');
         if (cardDock) cardDock.classList.remove('hidden');
@@ -427,28 +429,17 @@ export class Game {
 
         // New Menu Interaction Logic
         const playBtn = document.getElementById('play-battle-btn');
-        const unitsBtn = document.querySelectorAll('.main-menu-btn')[1]; // The second button is UNITS
-        const towersBtn = document.querySelectorAll('.main-menu-btn')[2]; // The third button is TOWERS
         const modePopup = document.getElementById('mode-select-popup');
         const modeCloseBtn = document.getElementById('mode-close-btn');
-
-        if (unitsBtn && unitsBtn.innerText.includes('UNITS')) {
-            unitsBtn.addEventListener('click', () => {
-                this.openDeckScreen('units');
-            });
-        }
-
-        if (towersBtn && towersBtn.innerText.includes('TOWERS')) {
-            towersBtn.addEventListener('click', () => {
-                this.openDeckScreen('towers');
-            });
-        }
 
         if (playBtn && modePopup) {
             playBtn.addEventListener('click', () => {
                 modePopup.classList.remove('hidden');
             });
         }
+        // Duplicate Removed
+        // Brace removed to fix scope
+
 
         if (modeCloseBtn && modePopup) {
             modeCloseBtn.addEventListener('click', () => {
@@ -456,11 +447,46 @@ export class Game {
             });
         }
 
+
+        // --- DOCK BUTTON LISTENERS (Shop, Units, Towers, Social, Events) ---
+        const shopBtn = document.getElementById('shop-btn');
+        const shopModal = document.getElementById('shop-modal');
+        const shopClose = document.getElementById('shop-close-btn');
+
+        const socialBtn = document.getElementById('social-btn');
+        const socialModal = document.getElementById('social-modal');
+        const socialClose = document.getElementById('social-close-btn');
+
+        const eventsBtn = document.getElementById('events-btn');
+        const eventsModal = document.getElementById('events-modal');
+        const eventsClose = document.getElementById('events-close-btn');
+
+        // Units & Towers (Open Deck Screen)
+        const unitsDockBtn = document.getElementById('units-btn');
+        const towersDockBtn = document.getElementById('towers-btn');
+
+        if (unitsDockBtn) unitsDockBtn.onclick = () => this.openDeckScreen('units');
+        if (towersDockBtn) towersDockBtn.onclick = () => this.openDeckScreen('towers');
+
         // Settings Logic
         const settingsBtn = document.getElementById('main-settings-btn');
         const settingsModal = document.getElementById('settings-modal');
         const settingsClose = document.getElementById('settings-close-btn');
         const volumeSlider = document.getElementById('volume-slider');
+
+        if (shopBtn && shopModal) shopBtn.onclick = () => shopModal.classList.remove('hidden');
+        if (shopClose && shopModal) shopClose.onclick = () => shopModal.classList.add('hidden');
+
+        // Social
+        if (socialBtn && socialModal) socialBtn.onclick = () => socialModal.classList.remove('hidden');
+        if (socialClose && socialModal) socialClose.onclick = () => socialModal.classList.add('hidden');
+
+        // Events
+        if (eventsBtn && eventsModal) eventsBtn.onclick = () => eventsModal.classList.remove('hidden');
+        if (eventsClose && eventsModal) eventsClose.onclick = () => eventsModal.classList.add('hidden');
+
+        // Logic Cleaned
+
 
         if (settingsBtn && settingsModal) {
             settingsBtn.addEventListener('click', () => {
@@ -641,6 +667,7 @@ export class Game {
         const roleBtn = document.getElementById('role-switch-btn');
         const menuBtn = document.getElementById('menu-btn');
         const welcomeScreen = document.getElementById('welcome-screen');
+        const appRootMenu = document.getElementById('app-root-menu'); // NEW
 
         if (resumeBtn) {
             resumeBtn.onclick = () => {
@@ -672,6 +699,7 @@ export class Game {
 
                 // Show Main Menu & Level Select
                 if (welcomeScreen) welcomeScreen.classList.remove('hidden');
+                if (appRootMenu) appRootMenu.classList.remove('hidden'); // SHOW NEW MENU
                 this.showLevelSelect(); // Re-use existing helper
             };
         }
@@ -691,12 +719,14 @@ export class Game {
 
                 // Show Main Menu
                 if (welcomeScreen) welcomeScreen.classList.remove('hidden');
+                if (appRootMenu) appRootMenu.classList.remove('hidden'); // SHOW NEW MENU
 
-                // Reset Mode Popup visibility if needed?
+                // Reset to Home State (Close any open modals on the menu)
                 const modePopup = document.getElementById('mode-select-popup');
                 if (modePopup) modePopup.classList.add('hidden');
             };
         }
+
     }
 
     startMultiplayer(mode) {
