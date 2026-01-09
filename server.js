@@ -10,6 +10,17 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const server = http.createServer(app);
 
+// Set proper MIME types for PWA files
+app.use((req, res, next) => {
+    if (req.url === '/manifest.json') {
+        res.setHeader('Content-Type', 'application/manifest+json');
+    } else if (req.url === '/sw.js') {
+        res.setHeader('Content-Type', 'application/javascript');
+        res.setHeader('Service-Worker-Allowed', '/');
+    }
+    next();
+});
+
 // Serve static files from the CURRENT directory
 app.use(express.static(__dirname));
 
