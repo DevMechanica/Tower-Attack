@@ -1,5 +1,4 @@
 # [GAME NAME HERE]
-
 > A high-octane Reverse Tower Defense game built with an AI-first workflow.
 
 **[GAME NAME HERE]** is a mobile-first strategy game where players command swarms of units to breach enemy defenses. It features "Antigravity" physics, multiplier gate mechanics, and massive unit counts, designed for rapid development using the **Antigravity** agent orchestration framework.
